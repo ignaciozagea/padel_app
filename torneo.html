@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>🏆 Liga de Pádel | Torneo Eliminación Directa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/torneo.css">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <a href="index.html">
+                <h1>🏆 Torneo de Pádel</h1>
+            </a>
+            <p>Eliminación directa | Mejor de 3 sets | Datos persistentes</p>
+        </div>
+        <div class="admin-badge" id="adminBadge" style="display: none;">
+            <span>👑 Modo Administrador</span>
+            <a href="#" class="btn btn-secondary btn-sm" onclick="cerrarSesion()">Cerrar sesión</a>
+        </div>
+    </div>
+
+    <!-- Panel Admin -->
+    <div id="adminPanel" style="display: none;">
+        <div class="card">
+            <h2>📋 Gestión del Torneo</h2>
+            <div class="form-group">
+                <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)">
+                <button class="btn btn-primary" id="addTeamBtn">➕ Agregar</button>
+                <button class="btn btn-primary" id="generateTournamentBtn">🎲 Generar Torneo</button>
+                <button class="btn btn-danger" id="resetTournamentBtn">🔄 Resetear</button>
+            </div>
+            <div id="teamsList" class="teams-list"></div>
+            <div class="info-text">Equipos inscritos: <span id="teamCount">0</span> | Recomendado: 4, 8, 16 equipos</div>
+        </div>
+    </div>
+
+    <!-- Árbol del Torneo -->
+    <div class="card" id="bracketCard" style="display: none;">
+        <h2>🏅 Desarrollo del Torneo (Mejor de 3 sets)</h2>
+        <div id="bracketContainer" class="bracket"></div>
+        <div id="winnerAnnouncement" class="winner-announcement" style="display: none;"></div>
+    </div>
+</div>
+
+<!-- Modal de Resultados con 3 sets -->
+<div id="resultModal" class="modal">
+    <div class="modal-content">
+        <h3>🎾 Registrar Resultado del Partido</h3>
+        <div class="modal-teams" id="modalTeams"></div>
+        
+        <div class="sets-container">
+            <div class="set-card">
+                <label>🎾 SET 1</label>
+                <div class="set-inputs">
+                    <input type="number" id="modal_set1_local" placeholder="0" min="0" max="7" step="1" value="0">
+                    <span>-</span>
+                    <input type="number" id="modal_set1_visit" placeholder="0" min="0" max="7" step="1" value="0">
+                </div>
+            </div>
+            <div class="set-card">
+                <label>🎾 SET 2</label>
+                <div class="set-inputs">
+                    <input type="number" id="modal_set2_local" placeholder="0" min="0" max="7" step="1" value="0">
+                    <span>-</span>
+                    <input type="number" id="modal_set2_visit" placeholder="0" min="0" max="7" step="1" value="0">
+                </div>
+            </div>
+            <div class="set-card">
+                <label>🎾 SET 3 (opcional)</label>
+                <div class="set-inputs">
+                    <input type="number" id="modal_set3_local" placeholder="-" min="0" max="7" step="1">
+                    <span>-</span>
+                    <input type="number" id="modal_set3_visit" placeholder="-" min="0" max="7" step="1">
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-text">⚠️ El ganador se determina automáticamente por sets ganados (2-0 o 2-1)</div>
+        
+        <div class="form-group" style="justify-content: center; margin-top: 1rem;">
+            <button class="btn btn-success" id="confirmResultBtn">✅ Confirmar Resultado</button>
+            <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/torneo.js"></script>
+
+</body>
+</html>

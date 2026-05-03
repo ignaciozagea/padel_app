@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>🏆 Liga de Pádel | Gestión Profesional</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+    <div class="hero">
+        <div class="eyebrow">
+            <span>🏸</span> La mejor gestión de pádel
+        </div>
+        <h1> Pádel GO</h1>
+        <p>Gestión de ligas, registro de resultados y organización de torneos</p>
+    </div>
+
+    <div class="buttons-container">
+        <a href="liga.html" class="btn btn-primary">
+            <span>🏆</span> Liga
+        </a>
+        <a href="torneo.html" class="btn btn-secondary">
+            <span>🎯</span> Torneo
+        </a>
+    </div>
+
+    <div class="admin-section">
+        <p>🔐 ¿Administrador?</p>
+        <button class="btn btn-admin" id="adminLoginBtn">
+            <span>👑</span> Inicia sesión aquí
+        </button>
+    </div>
+</div>
+
+<!-- Modal Login -->
+<div id="loginModal" class="modal">
+    <div class="modal-content">
+        <h3>🔐 Acceso Administrador</h3>
+        <input type="password" id="adminPassword" placeholder="Contraseña" autocomplete="off">
+        <button class="btn btn-primary" id="confirmLoginBtn" style="width: 100%;">Acceder</button>
+        <div id="loginError" class="error-msg"></div>
+        <button class="btn btn-secondary" onclick="cerrarModal()" style="margin-top: 1rem; width: 100%;">Cancelar</button>
+    </div>
+</div>
+
+<script src="js/index.js"></script>
+
+
+</body>
+</html>

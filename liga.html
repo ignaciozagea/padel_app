@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>🏆 Liga de Pádel | Gestión de Ligas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/liga.css">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <a href="index.html" style="text-decoration: none;">
+                <h1>🏆 Liga de Pádel</h1>
+            </a>
+            <p>Gestión profesional de ligas | Sistema 3 sets | Datos persistentes</p>
+        </div>
+        <div class="admin-badge" id="adminBadge" style="display: none;">
+            <span>👑 Modo Administrador</span>
+            <a href="#" class="btn btn-secondary btn-sm" onclick="cerrarSesion()">Cerrar sesión</a>
+        </div>
+    </div>
+
+    <!-- Navegación de Ligas -->
+    <div class="liga-nav">
+        <button class="liga-btn active" data-liga="masculino_avanzado">👨 Masculino Avanzado</button>
+        <button class="liga-btn" data-liga="masculino_intermedio">👨 Masculino Intermedio</button>
+        <button class="liga-btn" data-liga="masculino_iniciacion">👨 Masculino Iniciación</button>
+        <button class="liga-btn" data-liga="femenino">👩 Femenino</button>
+    </div>
+
+    <!-- Panel de Administración -->
+    <div id="adminPanel" style="display: none;">
+        <div class="admin-grid">
+            <div class="card">
+                <h2>📋 Gestión de Equipos</h2>
+                <div class="form-group">
+                    <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)">
+                    <button class="btn btn-primary" id="addTeamBtn">➕ Agregar</button>
+                </div>
+                <div id="teamsList" class="teams-list"></div>
+                <div class="info-text">Total de equipos: <span id="teamCount">0</span></div>
+            </div>
+
+            <div class="card">
+                <h2>⚙️ Acciones</h2>
+                <div class="form-group">
+                    <button class="btn btn-primary" id="generateCalendarBtn">🎲 Generar Calendario</button>
+                    <button class="btn btn-danger" id="resetLigaBtn">🔄 Resetear Liga</button>
+                </div>
+                <div class="info-text" id="calendarStatus"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clasificación -->
+    <div class="card full-width">
+        <h2>🏆 Clasificación</h2>
+        <div id="standingsContainer" class="standings-container"></div>
+    </div>
+    
+    <!-- Calendario -->
+    <div class="card full-width">
+        <h2>📅 Calendario de Partidos (Mejor de 3 sets)</h2>
+        <div id="matchesContainer" class="matches-container"></div>
+    </div>
+</div>
+
+<script src="js/liga.js"></script>
+
+</body>
+</html>
