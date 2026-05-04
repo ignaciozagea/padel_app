@@ -68,7 +68,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 
 ## 📁 Estructura del Proyecto
 
-```bash
+```text
 liga-padel/
 |
 ├── index.html              # Página principal (login + navegación)
@@ -93,7 +93,7 @@ liga-padel/
 |   ├── test_db.php         # Diagnóstico de base de datos
 |   └── test_api.html       # Prueba de conexión API
 |
-└── README.md               # Documentación ```
+└── README.md               # Documentación
 
 ## 🛠️ Instalación y Configuración
 
