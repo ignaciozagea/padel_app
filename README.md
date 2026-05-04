@@ -67,32 +67,33 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 | Git | - | Control de versiones |
 
 ## 📁 Estructura del Proyecto
-liga-padel/
-│
-├── 📄 index.html # Página principal (login + navegación)
-├── 📄 liga.html # Gestión de ligas
-├── 📄 torneo.html # Gestión de torneos
-│
-├── 📁 JS/
-│ ├── index.js
-│ ├── liga.js
-│ └── torneo.js
-│
-├── 📁 CSS/
-│ ├── index.css
-│ ├── liga.css
-│ └── torneo.css
-│
-├── 📁 API/
-│ ├── 📄 config.php # Configuración de base de datos
-│ ├── 📄 api_liga.php # API para gestión de ligas
-│ ├── 📄 api_torneo.php # API para gestión de torneos
-│ ├── 📄 api_login.php # API para verificar login
-│ ├── 📄 test_db.php # Diagnóstico de base de datos
-│ └── 📄 test_api.html # Prueba de conexión API
-│
-└── 📄 README.md # Documentación
 
+```text
+liga-padel/
+|
+├── index.html              # Página principal (login + navegación)
+├── liga.html               # Gestión de ligas
+├── torneo.html             # Gestión de torneos
+|
+├── JS/
+|   ├── index.js
+|   ├── liga.js
+|   └── torneo.js
+|
+├── CSS/
+|   ├── index.css
+|   ├── liga.css
+|   └── torneo.css
+|
+├── API/
+|   ├── config.php          # Configuración de base de datos
+|   ├── api_liga.php        # API para gestión de ligas
+|   ├── api_torneo.php      # API para gestión de torneos
+|   ├── api_login.php       # API para verificar login
+|   ├── test_db.php         # Diagnóstico de base de datos
+|   └── test_api.html       # Prueba de conexión API
+|
+└── README.md               # Documentación
 
 ## 🛠️ Instalación y Configuración
 
