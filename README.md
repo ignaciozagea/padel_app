@@ -135,12 +135,12 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 # - Abrir http://localhost/padel_app/index.html
 ```
 
-🔐 Seguridad
-✅ Autenticación: SessionStorage para administradores
-✅ Contraseña: Almacenada localmente (admin123)
-✅ CORS: Configurado para permitir peticiones
-✅ Validación: Sanitización de datos en PHP
-✅ Prepared Statements: Protección contra SQL injection
+### 🔐 Seguridad
+- ✅ **Autenticación**: SessionStorage para administradores
+- ✅ **Contraseña**: Almacenada localmente (admin123)
+- ✅ **CORS**: Configurado para permitir peticiones
+- ✅ **Validación**: Sanitización de datos en PHP
+- ✅ **Prepared Statements**: Protección contra SQL injection
 
 
 
