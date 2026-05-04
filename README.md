@@ -69,6 +69,9 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 ## 📁 Estructura del Proyecto
 
 ```text
+## 📁 Estructura del Proyecto
+
+```text
 liga-padel/
 |
 ├── index.html              # Página principal (login + navegación)
