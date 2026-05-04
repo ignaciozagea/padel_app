@@ -96,6 +96,20 @@ liga-padel/
 └── README.md               # Documentación
 ```
 
+## 🗄️ Base de Datos
+
+### Tablas principales
+
+| Tabla | Descripción |
+|-------|-------------|
+| `administradores` | Administrador |
+| `equipos_liga` | Equipos participantes en cada liga |
+| `calendario_liga` | Partidos y resultados de las ligas |
+| `torneo` | Cabecera del torneo activo |
+| `torneo_equipos` | Equipos inscritos en el torneo |
+| `torneo_partidos` | Partidos del torneo por rondas |
+
+
 ## 🛠️ Instalación y Configuración
 
 ### Requisitos Previos
