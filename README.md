@@ -158,7 +158,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 
 ## 👤 Autor
 
-**Ignacio Zagea**
+**Ignacio Zamora Gea**
 
 - GitHub: [@ignaciozagea](https://github.com/ignaciozagea)
 - Demo: [https://padelgo.ct.ws](https://padelgo.ct.ws)
