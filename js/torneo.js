@@ -335,85 +335,94 @@
         matchActual = null;
     }
 
-    async function confirmarResultado() {
-        if (!matchActual) return;
-        
-        const set1_local = parseInt(document.getElementById('modal_set1_local').value) || 0;
-        const set1_visit = parseInt(document.getElementById('modal_set1_visit').value) || 0;
-        const set2_local = parseInt(document.getElementById('modal_set2_local').value) || 0;
-        const set2_visit = parseInt(document.getElementById('modal_set2_visit').value) || 0;
-        const set3_local_raw = document.getElementById('modal_set3_local').value;
-        const set3_visit_raw = document.getElementById('modal_set3_visit').value;
-        
-        let set3_local = (set3_local_raw !== '') ? parseInt(set3_local_raw) : null;
-        let set3_visit = (set3_visit_raw !== '') ? parseInt(set3_visit_raw) : null;
-        
-        if (set1_local === set1_visit) {
-            alert('❌ El set 1 no puede quedar empatado');
+  async function confirmarResultado() {
+    if (!matchActual) return;
+    
+    // Obtener los valores de los sets
+    const set1_local = parseInt(document.getElementById('modal_set1_local').value) || 0;
+    const set1_visit = parseInt(document.getElementById('modal_set1_visit').value) || 0;
+    const set2_local = parseInt(document.getElementById('modal_set2_local').value) || 0;
+    const set2_visit = parseInt(document.getElementById('modal_set2_visit').value) || 0;
+    const set3_local_raw = document.getElementById('modal_set3_local').value;
+    const set3_visit_raw = document.getElementById('modal_set3_visit').value;
+    
+    let set3_local = (set3_local_raw !== '') ? parseInt(set3_local_raw) : null;
+    let set3_visit = (set3_visit_raw !== '') ? parseInt(set3_visit_raw) : null;
+    
+    // Validaciones
+    if (set1_local === set1_visit) {
+        alert('❌ El set 1 no puede quedar empatado');
+        return;
+    }
+    if (set2_local === set2_visit) {
+        alert('❌ El set 2 no puede quedar empatado');
+        return;
+    }
+    
+    // Calcular sets ganados
+    let setsGanadosLocal = 0;
+    let setsGanadosVisitante = 0;
+    
+    if (set1_local > set1_visit) setsGanadosLocal++;
+    else setsGanadosVisitante++;
+    
+    if (set2_local > set2_visit) setsGanadosLocal++;
+    else setsGanadosVisitante++;
+    
+    let haySet3 = (set3_local !== null && set3_visit !== null && 
+                   set3_local_raw !== '' && set3_visit_raw !== '');
+    
+    if (haySet3) {
+        if (set3_local === set3_visit) {
+            alert('❌ El set 3 no puede quedar empatado');
             return;
         }
-        if (set2_local === set2_visit) {
-            alert('❌ El set 2 no puede quedar empatado');
-            return;
-        }
-        
-        let setsGanadosLocal = 0;
-        let setsGanadosVisitante = 0;
-        
-        if (set1_local > set1_visit) setsGanadosLocal++;
+        if (set3_local > set3_visit) setsGanadosLocal++;
         else setsGanadosVisitante++;
+    }
+    
+    // Determinar ganador
+    let ganadorNombre = '';
+    if (setsGanadosLocal > setsGanadosVisitante) {
+        ganadorNombre = matchActual.equipo1;
+    } else {
+        ganadorNombre = matchActual.equipo2;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}?action=guardarPartido`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                partidoId: `${matchActual.ronda}_${matchActual.indice}`,
+                ganador: ganadorNombre,
+                set1_local: set1_local,
+                set1_visitante: set1_visit,
+                set2_local: set2_local,
+                set2_visitante: set2_visit,
+                set3_local: set3_local,
+                set3_visitante: set3_visit
+            })
+        });
         
-        if (set2_local > set2_visit) setsGanadosLocal++;
-        else setsGanadosVisitante++;
+        const data = await response.json();
         
-        let haySet3 = (set3_local !== null && set3_visit !== null && 
-                       set3_local_raw !== '' && set3_visit_raw !== '');
-        
-        if (haySet3) {
-            if (set3_local === set3_visit) {
-                alert('❌ El set 3 no puede quedar empatado');
-                return;
-            }
-            if (set3_local > set3_visit) setsGanadosLocal++;
-            else setsGanadosVisitante++;
+        if (data.success) {
+            await cargarTorneo();
+            cerrarModal();
+            
+            let resumen = `✅ Partido registrado correctamente!\n\n`;
+            resumen += `${matchActual.equipo1} ${setsGanadosLocal} - ${setsGanadosVisitante} ${matchActual.equipo2}\n`;
+            resumen += `📊 ${set1_local}-${set1_visit}, ${set2_local}-${set2_visit}`;
+            if (haySet3) resumen += `, ${set3_local}-${set3_visit}`;
+            resumen += `\n\n🏆 AVANZA A SIGUIENTE RONDA: ${ganadorNombre}`;
+            alert(resumen);
+        } else {
+            alert('❌ Error al guardar: ' + (data.error || 'Error desconocido'));
         }
-        
-        let ganadorNombre = setsGanadosLocal > setsGanadosVisitante ? matchActual.equipo1 : matchActual.equipo2;
-        
-        try {
-            const response = await fetch(`${API_URL}?action=guardarPartido`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    partidoId: `${matchActual.ronda}_${matchActual.indice}`,
-                    ganador: ganadorNombre,
-                    set1_local: set1_local,
-                    set1_visitante: set1_visit,
-                    set2_local: set2_local,
-                    set2_visitante: set2_visit,
-                    set3_local: set3_local,
-                    set3_visitante: set3_visit
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                await cargarTorneo();
-                cerrarModal();
-                
-                let resumen = `✅ Partido registrado:\n`;
-                resumen += `${matchActual.equipo1} ${setsGanadosLocal} - ${setsGanadosVisitante} ${matchActual.equipo2}\n`;
-                resumen += `📊 ${set1_local}-${set1_visit}, ${set2_local}-${set2_visit}`;
-                if (haySet3) resumen += `, ${set3_local}-${set3_visit}`;
-                resumen += `\n🏆 AVANZA: ${ganadorNombre}`;
-                alert(resumen);
-            } else {
-                alert('❌ Error al guardar el resultado');
-            }
         } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        console.error('Error:', error);
+        alert('❌ Error de conexión al servidor');
         }
     }
 

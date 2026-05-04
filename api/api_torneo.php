@@ -197,92 +197,95 @@ try {
             break;
         
         // ==================== GUARDAR RESULTADO DE PARTIDO ====================
-        case 'guardarPartido':
-            $data = json_decode(file_get_contents('php://input'), true);
-            
-            // Parsear partidoId (formato: "ronda_indice")
-            $parts = explode('_', $data['partidoId']);
-            $ronda = intval($parts[0]) + 1; // +1 porque en el frontend empieza en 0
-            $orden = intval($parts[1]);
-            
-            // Obtener torneo activo
-            $stmt = $pdo->query("SELECT id FROM torneo WHERE estado = 'activo' ORDER BY id DESC LIMIT 1");
-            $torneo = $stmt->fetch();
-            
-            if (!$torneo) {
-                echo json_encode(['success' => false, 'error' => 'No hay torneo activo']);
-                break;
-            }
-            
-            // Verificar si el partido existe
-            $stmt = $pdo->prepare("SELECT id, equipo1, equipo2 FROM torneo_partidos WHERE torneo_id = ? AND ronda = ? AND orden = ?");
-            $stmt->execute([$torneo['id'], $ronda, $orden]);
-            $partido = $stmt->fetch();
-            
-            if (!$partido) {
-                echo json_encode(['success' => false, 'error' => 'Partido no encontrado']);
-                break;
-            }
-            
-            // Actualizar el partido con el resultado
-            $stmt = $pdo->prepare("UPDATE torneo_partidos SET 
-                ganador = ?,
-                completado = 1,
-                set1_local = ?, 
-                set1_visitante = ?,
-                set2_local = ?, 
-                set2_visitante = ?,
-                set3_local = ?, 
-                set3_visitante = ?
-                WHERE torneo_id = ? AND ronda = ? AND orden = ?");
-            
-            $stmt->execute([
-                $data['ganador'],
-                $data['set1_local'], $data['set1_visitante'],
-                $data['set2_local'], $data['set2_visitante'],
-                $data['set3_local'], $data['set3_visitante'],
-                $torneo['id'], $ronda, $orden
-            ]);
-            
-            // Actualizar el siguiente partido (si existe)
-            $siguienteOrden = floor($orden / 2);
-            $esLocal = ($orden % 2 == 0);
-            
-            $stmt = $pdo->prepare("SELECT id FROM torneo_partidos WHERE torneo_id = ? AND ronda = ? AND orden = ?");
-            $stmt->execute([$torneo['id'], $ronda + 1, $siguienteOrden]);
-            $siguientePartido = $stmt->fetch();
-            
-            if ($siguientePartido) {
-                if ($esLocal) {
-                    $stmt = $pdo->prepare("UPDATE torneo_partidos SET equipo1 = ? WHERE id = ?");
-                } else {
-                    $stmt = $pdo->prepare("UPDATE torneo_partidos SET equipo2 = ? WHERE id = ?");
-                }
-                $stmt->execute([$data['ganador'], $siguientePartido['id']]);
-            } elseif ($ronda + 1 > 5) {
-                // Es la final, actualizar ganador del torneo
-                $stmt = $pdo->prepare("UPDATE torneo SET ganador = ? WHERE id = ?");
-                $stmt->execute([$data['ganador'], $torneo['id']]);
-            }
-            
-            // Verificar si ya se completó la final
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM torneo_partidos WHERE torneo_id = ? AND ronda = (SELECT MAX(ronda) FROM torneo_partidos WHERE torneo_id = ?) AND completado = 0");
-            $stmt->execute([$torneo['id'], $torneo['id']]);
-            $pendientes = $stmt->fetchColumn();
-            
-            if ($pendientes == 0) {
-                // Obtener el ganador de la final
-                $stmt = $pdo->prepare("SELECT ganador FROM torneo_partidos WHERE torneo_id = ? AND ronda = (SELECT MAX(ronda) FROM torneo_partidos WHERE torneo_id = ?)");
-                $stmt->execute([$torneo['id'], $torneo['id']]);
-                $final = $stmt->fetch();
-                if ($final && $final['ganador']) {
-                    $stmt = $pdo->prepare("UPDATE torneo SET ganador = ? WHERE id = ?");
-                    $stmt->execute([$final['ganador'], $torneo['id']]);
-                }
-            }
-            
-            echo json_encode(['success' => true]);
-            break;
+       case 'guardarPartido':
+    // Limpiar cualquier salida previa
+    if (ob_get_length()) ob_clean();
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    // Verificar que los datos llegaron
+    if (!$data) {
+        echo json_encode(['success' => false, 'error' => 'No se recibieron datos']);
+        break;
+    }
+    
+    // Parsear partidoId
+    $parts = explode('_', $data['partidoId']);
+    $ronda = intval($parts[0]) + 1;
+    $orden = intval($parts[1]);
+    
+    // Obtener torneo activo
+    $stmt = $pdo->query("SELECT id FROM torneo WHERE estado = 'activo' ORDER BY id DESC LIMIT 1");
+    $torneo = $stmt->fetch();
+    
+    if (!$torneo) {
+        echo json_encode(['success' => false, 'error' => 'No hay torneo activo']);
+        break;
+    }
+    
+    // Verificar si el partido existe
+    $stmt = $pdo->prepare("SELECT id FROM torneo_partidos WHERE torneo_id = ? AND ronda = ? AND orden = ?");
+    $stmt->execute([$torneo['id'], $ronda, $orden]);
+    if ($stmt->rowCount() == 0) {
+        echo json_encode(['success' => false, 'error' => 'Partido no encontrado']);
+        break;
+    }
+    
+    // Actualizar el partido
+    $stmt = $pdo->prepare("UPDATE torneo_partidos SET 
+        ganador = ?,
+        completado = 1,
+        set1_local = ?, 
+        set1_visitante = ?,
+        set2_local = ?, 
+        set2_visitante = ?,
+        set3_local = ?, 
+        set3_visitante = ?
+        WHERE torneo_id = ? AND ronda = ? AND orden = ?");
+    
+    $resultado = $stmt->execute([
+        $data['ganador'],
+        $data['set1_local'], $data['set1_visitante'],
+        $data['set2_local'], $data['set2_visitante'],
+        $data['set3_local'], $data['set3_visitante'],
+        $torneo['id'], $ronda, $orden
+    ]);
+    
+    if (!$resultado) {
+        echo json_encode(['success' => false, 'error' => 'Error al actualizar el partido']);
+        break;
+    }
+    
+    // Actualizar siguiente ronda
+    $siguienteOrden = floor($orden / 2);
+    $esLocal = ($orden % 2 == 0);
+    
+    $stmt = $pdo->prepare("SELECT id FROM torneo_partidos WHERE torneo_id = ? AND ronda = ? AND orden = ?");
+    $stmt->execute([$torneo['id'], $ronda + 1, $siguienteOrden]);
+    $siguientePartido = $stmt->fetch();
+    
+    if ($siguientePartido) {
+        if ($esLocal) {
+            $stmt = $pdo->prepare("UPDATE torneo_partidos SET equipo1 = ? WHERE id = ?");
+        } else {
+            $stmt = $pdo->prepare("UPDATE torneo_partidos SET equipo2 = ? WHERE id = ?");
+        }
+        $stmt->execute([$data['ganador'], $siguientePartido['id']]);
+    }
+    
+    // Si es la final, actualizar ganador del torneo
+    $stmt = $pdo->prepare("SELECT MAX(ronda) as max_ronda FROM torneo_partidos WHERE torneo_id = ?");
+    $stmt->execute([$torneo['id']]);
+    $maxRonda = $stmt->fetch()['max_ronda'];
+    
+    if ($ronda == $maxRonda) {
+        $stmt = $pdo->prepare("UPDATE torneo SET ganador = ? WHERE id = ?");
+        $stmt->execute([$data['ganador'], $torneo['id']]);
+    }
+    
+    // Devolver respuesta limpia
+    echo json_encode(['success' => true]);
+    break;
         
         // ==================== RESETEAR TORNEO ====================
         case 'resetTorneo':
