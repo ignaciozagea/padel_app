@@ -93,7 +93,7 @@ liga-padel/
 |   ├── test_db.php         # Diagnóstico de base de datos
 |   └── test_api.html       # Prueba de conexión API
 |
-└── README.md               # Documentación
+└── README.md               # Documentación ```
 
 ## 🛠️ Instalación y Configuración
 
