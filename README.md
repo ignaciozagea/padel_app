@@ -68,6 +68,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 
 ## 📁 Estructura del Proyecto
 
+```bash
 liga-padel/
 |
 ├── index.html              # Página principal (login + navegación)
@@ -106,7 +107,7 @@ liga-padel/
 
 ### Instalación Local
 
-```bash
+
 # 1. Clonar el repositorio
 git clone https://github.com/ignaciozagea/padel_app.git
 cd padel_app
