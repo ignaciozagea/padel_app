@@ -94,6 +94,7 @@ liga-padel/
 |   └── test_api.html       # Prueba de conexión API
 |
 └── README.md               # Documentación
+```
 
 ## 🛠️ Instalación y Configuración
 
