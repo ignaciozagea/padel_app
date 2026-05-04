@@ -137,7 +137,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 
 ### 🔐 Seguridad
 - ✅ **Autenticación**: SessionStorage para administradores
-- ✅ **Contraseña**: Almacenada localmente (admin123)
+- ✅ **Contraseña**: Almacenada localmente (****)
 - ✅ **CORS**: Configurado para permitir peticiones
 - ✅ **Validación**: Sanitización de datos en PHP
 - ✅ **Prepared Statements**: Protección contra SQL injection
