@@ -133,16 +133,13 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 # 6. Iniciar el servidor
 # - Iniciar Apache y MySQL en XAMPP
 # - Abrir http://localhost/padel_app/index.html
+```
 
 🔐 Seguridad
 ✅ Autenticación: SessionStorage para administradores
-
 ✅ Contraseña: Almacenada localmente (admin123)
-
 ✅ CORS: Configurado para permitir peticiones
-
 ✅ Validación: Sanitización de datos en PHP
-
 ✅ Prepared Statements: Protección contra SQL injection
 
 
