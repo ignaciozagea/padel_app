@@ -68,41 +68,47 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 
 ## 📁 Estructura del Proyecto
 liga-padel/
+│
 ├── 📄 index.html # Página principal (login + navegación)
 ├── 📄 liga.html # Gestión de ligas
 ├── 📄 torneo.html # Gestión de torneos
-└── 📁 JS
-     ├──index.js 
-     ├── liga.js
-     └── torneo.js
-└── 📁 CSS
-     ├── index.css
-     ├── liga.css
-     └── torneo.css
-└── 📁 API
-     ├── 📄 config.php # Configuración de base de datos
-     ├── 📄 api_liga.php # API para gestión de ligas
-     ├── 📄 api_torneo.php # API para gestión de torneos
-     ├── 📄 api_login.php # API para verificar login
-     ├── 📄 test_db.php # Diagnóstico de base de datos
-     ├── 📄 test_api.html # Prueba de conexión API
-     └── 📄 README.md # Documentación
+│
+├── 📁 JS/
+│ ├── index.js
+│ ├── liga.js
+│ └── torneo.js
+│
+├── 📁 CSS/
+│ ├── index.css
+│ ├── liga.css
+│ └── torneo.css
+│
+├── 📁 API/
+│ ├── 📄 config.php # Configuración de base de datos
+│ ├── 📄 api_liga.php # API para gestión de ligas
+│ ├── 📄 api_torneo.php # API para gestión de torneos
+│ ├── 📄 api_login.php # API para verificar login
+│ ├── 📄 test_db.php # Diagnóstico de base de datos
+│ └── 📄 test_api.html # Prueba de conexión API
+│
+└── 📄 README.md # Documentación
 
-🛠️ Instalación y Configuración
-Requisitos Previos
-Servidor web (Apache/Nginx)
 
-PHP 7.4 o superior
+## 🛠️ Instalación y Configuración
 
-MySQL 5.7 o superior
+### Requisitos Previos
 
-XAMPP / WAMP / MAMP (para desarrollo local)
+- Servidor web (Apache/Nginx)
+- PHP 7.4 o superior
+- MySQL 5.7 o superior
+- XAMPP / WAMP / MAMP (para desarrollo local)
 
-Instalación Local
-bash
+### Instalación Local
+
+```bash
 # 1. Clonar el repositorio
 git clone https://github.com/ignaciozagea/padel_app.git
-cd liga-padel
+cd padel_app
 
 # 2. Copiar a la carpeta del servidor web
 # Windows: C:\xampp\htdocs\padel_app\
@@ -115,21 +121,24 @@ cd liga-padel
 # - Ejecutar el script SQL
 
 # 4. Configurar conexión
-# Editar config.php con tus datos.
+# Editar config.php con tus datos
 
 # 5. Configurar URL de la API
 # Editar liga.html y torneo.html:
-javascript
-const API_URL = 'http://localhost/liga-padel/api_liga.php';
-bash
+
+const API_URL = 'http://localhost/padel_app/api_liga.php';
+
 # 6. Iniciar el servidor
 # - Iniciar Apache y MySQL en XAMPP
-# - Abrir http://localhost/liga-padel/index.html
+# - Abrir http://localhost/padel_app/index.html
 
 🔐 Seguridad
 ✅ Autenticación: SessionStorage para administradores
-✅ Contraseña: Almacenada localmente (admin123)
-✅ CORS: Configurado para permitir peticiones
-✅ Validación: Sanitización de datos en PHP
-✅ Prepared Statements: Protección contra SQL injection
 
+✅ Contraseña: Almacenada localmente (admin123)
+
+✅ CORS: Configurado para permitir peticiones
+
+✅ Validación: Sanitización de datos en PHP
+
+✅ Prepared Statements: Protección contra SQL injection
