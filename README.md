@@ -94,7 +94,7 @@ liga-padel/
 |   └── test_api.html       # Prueba de conexión API
 |
 └── README.md               # Documentación
-
+```bash
 
 ## 🛠️ Instalación y Configuración
 
