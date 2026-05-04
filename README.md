@@ -156,5 +156,10 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 - ✅ **Validación**: Sanitización de datos en PHP
 - ✅ **Prepared Statements**: Protección contra SQL injection
 
+## 👤 Autor
 
+**Ignacio Zagea**
+
+- GitHub: [@ignaciozagea](https://github.com/ignaciozagea)
+- Demo: [https://padelgo.ct.ws](https://padelgo.ct.ws)
 
