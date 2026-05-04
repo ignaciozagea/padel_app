@@ -66,35 +66,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 | MySQL | 8.0+ | Base de datos relacional |
 | Git | - | Control de versiones |
 
-## 📁 Estructura del Proyecto
 
-```bash
-liga-padel/
-|
-├── index.html              # Página principal (login + navegación)
-├── liga.html               # Gestión de ligas
-├── torneo.html             # Gestión de torneos
-|
-├── JS/
-|   ├── index.js
-|   ├── liga.js
-|   └── torneo.js
-|
-├── CSS/
-|   ├── index.css
-|   ├── liga.css
-|   └── torneo.css
-|
-├── API/
-|   ├── config.php          # Configuración de base de datos
-|   ├── api_liga.php        # API para gestión de ligas
-|   ├── api_torneo.php      # API para gestión de torneos
-|   ├── api_login.php       # API para verificar login
-|   ├── test_db.php         # Diagnóstico de base de datos
-|   └── test_api.html       # Prueba de conexión API
-|
-└── README.md               # Documentación
-```bash
 
 ## 🛠️ Instalación y Configuración
 
@@ -144,3 +116,33 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 ✅ Validación: Sanitización de datos en PHP
 
 ✅ Prepared Statements: Protección contra SQL injection
+
+## 📁 Estructura del Proyecto
+
+```bash
+liga-padel/
+|
+├── index.html              # Página principal (login + navegación)
+├── liga.html               # Gestión de ligas
+├── torneo.html             # Gestión de torneos
+|
+├── JS/
+|   ├── index.js
+|   ├── liga.js
+|   └── torneo.js
+|
+├── CSS/
+|   ├── index.css
+|   ├── liga.css
+|   └── torneo.css
+|
+├── API/
+|   ├── config.php          # Configuración de base de datos
+|   ├── api_liga.php        # API para gestión de ligas
+|   ├── api_torneo.php      # API para gestión de torneos
+|   ├── api_login.php       # API para verificar login
+|   ├── test_db.php         # Diagnóstico de base de datos
+|   └── test_api.html       # Prueba de conexión API
+|
+└── README.md               # Documentación
+
