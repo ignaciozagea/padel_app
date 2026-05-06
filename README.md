@@ -13,6 +13,7 @@
 ## 📋 Descripción
 
 Aplicación web completa para la **gestión profesional de ligas y torneos de pádel**. Permite administrar múltiples ligas, generar calendarios automáticos (round-robin), registrar resultados con sistema de puntuación 3/1/0, y organizar torneos de eliminación directa con sorteo aleatorio.
+<br>
 
 ### 🎯 Características Principales
 
@@ -29,6 +30,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 - ✅ **Persistencia de datos**: Base de datos MySQL
 - ✅ **Diseño responsive**: Adaptado a móviles, tablets y ordenadores
 - ✅ **Glassmorphism moderno**: Efectos visuales atractivos
+<br>
 
 ## 🚀 Demo
 
@@ -38,22 +40,25 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 |-----|---------|------------|
 | Administrador | - | `*****` |
 | Público | - | Sin autenticación |
+<br>
 
 ## 📸 Capturas de Pantalla
 
-### Página Principal
-<img width="1121" height="860" alt="pantalla_principal" src="https://github.com/user-attachments/assets/e4ae6b2b-020c-40aa-8a07-3d13ab683c2b" />
+<div align="center">
+  
+| Página Principal | Liga |
+|:---:|:---:|
+| ![Página Principal](./img/index.png) | ![Liga](./img/liga.png) |
 
-### Gestión de Ligas
-<img width="1762" height="733" alt="calendario_liga" src="https://github.com/user-attachments/assets/fb12aa7f-7ef9-409c-9cb3-5f846cbff53a" />
+| Torneo | Calendario |
+|:---:|:---:|
+| ![Torneo](./img/torneo.png) | ![Calendario](./img/calendario.png) |
 
-### Clasificación
-<img width="1822" height="767" alt="clasificacion_liga" src="https://github.com/user-attachments/assets/413dcfde-2664-4d86-8c1c-c8a40f892a8b" />
+| Gestión de Liga | Gestión de torneos |
+|:---:|:---:|
+| ![Gestión liga](./img/gestion_liga.png) | ![Gestión torneos](./img/gestion_torneo.png) |
 
-
-### Torneo
-<img width="1605" height="890" alt="cruces_torneo" src="https://github.com/user-attachments/assets/708c0056-5d16-420d-8653-2f8313105aa9" />
-
+</div>
 
 ## 🛠️ Tecnologías Utilizadas
 
