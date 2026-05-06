@@ -59,6 +59,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 | ![Gestión liga](./img/gestion_liga.png) | ![Gestión torneos](./img/gestion_torneo.png) |
 
 </div>
+<br>
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -100,6 +101,7 @@ liga-padel/
 |
 └── README.md               # Documentación
 ```
+<br>
 
 ## 🗄️ Base de Datos
 
@@ -113,6 +115,7 @@ liga-padel/
 | `torneo` | Cabecera del torneo activo |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas |
+<br>
 
 
 ## 🛠️ Instalación y Configuración
@@ -153,6 +156,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 # - Iniciar Apache y MySQL en XAMPP
 # - Abrir http://localhost/padel_app/index.html
 ```
+<br>
 
 ### 🔐 Seguridad
 - ✅ **Autenticación**: SessionStorage para administradores
@@ -160,6 +164,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 - ✅ **CORS**: Configurado para permitir peticiones
 - ✅ **Validación**: Sanitización de datos en PHP
 - ✅ **Prepared Statements**: Protección contra SQL injection
+<br>
 
 ## 👤 Autor
 
