@@ -1,4 +1,4 @@
-# 🏆 Liga de Pádel - Gestión de Torneos y Ligas
+8# 🏆 Liga de Pádel - Gestión de Torneos y Ligas
 
 <div align="center">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=for-the-badge&logo=php&logoColor=white"/>
@@ -77,29 +77,29 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 ```text
 liga-padel/
 |
-├── index.html              # Página principal (login + navegación)
-├── liga.html               # Gestión de ligas
-├── torneo.html             # Gestión de torneos
+├──📄 index.html              # Página principal (login + navegación)
+├──📄 liga.html               # Gestión de ligas
+├──📄 torneo.html             # Gestión de torneos
 |
 ├──📁 JS/
-|   ├── index.js
-|   ├── liga.js
-|   └── torneo.js
+|   ├──📄 index.js
+|   ├──📄 liga.js
+|   └──📄 torneo.js
 |
 ├──📁 CSS/
-|   ├── index.css
-|   ├── liga.css
-|   └── torneo.css
+|   ├──📄 index.css
+|   ├──📄 liga.css
+|   └──📄 torneo.css
 |
 ├──📁 API/
-|   ├── config.php          # Configuración de base de datos
-|   ├── api_liga.php        # API para gestión de ligas
-|   ├── api_torneo.php      # API para gestión de torneos
-|   ├── api_login.php       # API para verificar login
-|   ├── test_db.php         # Diagnóstico de base de datos
-|   └── test_api.html       # Prueba de conexión API
+|   ├──📄 config.php          # Configuración de base de datos
+|   ├──📄 api_liga.php        # API para gestión de ligas
+|   ├──📄 api_torneo.php      # API para gestión de torneos
+|   ├──📄 api_login.php       # API para verificar login
+|   ├──📄 test_db.php         # Diagnóstico de base de datos
+|   └──📄 test_api.html       # Prueba de conexión API
 |
-└── README.md               # Documentación
+└──📄 README.md               # Documentación
 ```
 <br>
 
