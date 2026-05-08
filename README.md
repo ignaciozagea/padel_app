@@ -81,17 +81,17 @@ liga-padel/
 ├── liga.html               # Gestión de ligas
 ├── torneo.html             # Gestión de torneos
 |
-├── JS/
+├──📁 JS/
 |   ├── index.js
 |   ├── liga.js
 |   └── torneo.js
 |
-├── CSS/
+├──📁 CSS/
 |   ├── index.css
 |   ├── liga.css
 |   └── torneo.css
 |
-├── API/
+├──📁 API/
 |   ├── config.php          # Configuración de base de datos
 |   ├── api_liga.php        # API para gestión de ligas
 |   ├── api_torneo.php      # API para gestión de torneos
