@@ -34,7 +34,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 
 ## 🚀 Demo
 
-> **URL de producción:** [https://padelgo.ct.ws](https://padelgo.ct.ws)
+> **URL de producción:** [https://padel-app-401.pages.dev](https://padel-app-401.pages.dev)
 
 | Rol | Usuario | Contraseña |
 |-----|---------|------------|
