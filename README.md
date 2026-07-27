@@ -1,4 +1,4 @@
-# 🏆 Liga de Pádel - Gestión de Torneos y Ligas
+8# 🏆 Liga de Pádel - Gestión de Torneos y Ligas
 
 <div align="center">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=for-the-badge&logo=php&logoColor=white"/>
@@ -34,7 +34,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 
 ## 🚀 Demo
 
-> **URL de producción:** [https://padelgo.ct.ws](https://padelgo.ct.ws)
+> **URL de producción:** [https://padel-app-401.pages.dev](https://padel-app-401.pages.dev)
 
 | Rol | Usuario | Contraseña |
 |-----|---------|------------|
@@ -59,6 +59,7 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 | ![Gestión liga](./img/gestion_liga.png) | ![Gestión torneos](./img/gestion_torneo.png) |
 
 </div>
+<br>
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -76,30 +77,31 @@ Aplicación web completa para la **gestión profesional de ligas y torneos de p�
 ```text
 liga-padel/
 |
-├── index.html              # Página principal (login + navegación)
-├── liga.html               # Gestión de ligas
-├── torneo.html             # Gestión de torneos
+├──📄 index.html              # Página principal (login + navegación)
+├──📄 liga.html               # Gestión de ligas
+├──📄 torneo.html             # Gestión de torneos
 |
-├── JS/
-|   ├── index.js
-|   ├── liga.js
-|   └── torneo.js
+├──📁 JS/
+|   ├──📄 index.js
+|   ├──📄 liga.js
+|   └──📄 torneo.js
 |
-├── CSS/
-|   ├── index.css
-|   ├── liga.css
-|   └── torneo.css
+├──📁 CSS/
+|   ├──📄 index.css
+|   ├──📄 liga.css
+|   └──📄 torneo.css
 |
-├── API/
-|   ├── config.php          # Configuración de base de datos
-|   ├── api_liga.php        # API para gestión de ligas
-|   ├── api_torneo.php      # API para gestión de torneos
-|   ├── api_login.php       # API para verificar login
-|   ├── test_db.php         # Diagnóstico de base de datos
-|   └── test_api.html       # Prueba de conexión API
+├──📁 API/
+|   ├──📄 config.php          # Configuración de base de datos
+|   ├──📄 api_liga.php        # API para gestión de ligas
+|   ├──📄 api_torneo.php      # API para gestión de torneos
+|   ├──📄 api_login.php       # API para verificar login
+|   ├──📄 test_db.php         # Diagnóstico de base de datos
+|   └──📄 test_api.html       # Prueba de conexión API
 |
-└── README.md               # Documentación
+└──📄 README.md               # Documentación
 ```
+<br>
 
 ## 🗄️ Base de Datos
 
@@ -113,6 +115,7 @@ liga-padel/
 | `torneo` | Cabecera del torneo activo |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas |
+<br>
 
 
 ## 🛠️ Instalación y Configuración
@@ -153,6 +156,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 # - Iniciar Apache y MySQL en XAMPP
 # - Abrir http://localhost/padel_app/index.html
 ```
+<br>
 
 ### 🔐 Seguridad
 - ✅ **Autenticación**: SessionStorage para administradores
@@ -160,6 +164,7 @@ const API_URL = 'http://localhost/padel_app/api_liga.php';
 - ✅ **CORS**: Configurado para permitir peticiones
 - ✅ **Validación**: Sanitización de datos en PHP
 - ✅ **Prepared Statements**: Protección contra SQL injection
+<br>
 
 ## 👤 Autor
 
