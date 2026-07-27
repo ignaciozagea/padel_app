@@ -1,7 +1,8 @@
 // ==================== CONFIGURACIÓN ====================
     // IMPORTANTE: Cambia esta URL por la de tu hosting
-    const API_URL = 'http://localhost/padel_app/api/api_liga.php';
-    
+    //const API_URL = 'http://localhost/padel_app/api/api_liga.php';
+    const API_URL = '/api/liga';
+
     let isAdmin = false;
     let currentLiga = 'masculino_avanzado';
     let equipos = [];

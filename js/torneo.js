@@ -1,6 +1,7 @@
  // ==================== CONFIGURACIÓN ====================
     // IMPORTANTE: Cambia 'padel_app' por el nombre de tu carpeta
-    const API_URL = 'http://localhost/padel_app/api/api_torneo.php';
+    //const API_URL = 'http://localhost/padel_app/api/api_torneo.php';
+    const API_URL = '/api/torneo';
     
     let isAdmin = false;
     let equiposTorneo = [];
