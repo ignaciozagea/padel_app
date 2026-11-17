@@ -6,6 +6,7 @@ pages_build_output_dir = "."
 binding = "DB"
 database_name = "padel-db"
 database_id = "0ec55c34-8da6-4c09-bb88-8840ea50a3ed"
+migrations_dir = "migrations"
 
 # La contraseña de administrador NO va aquí. Configúrala como secreto:
 #   npx wrangler pages secret put ADMIN_PASSWORD

@@ -29,10 +29,11 @@ function cerrarSesion() {
 }
 
 // fetch con JSON y token de administrador. Siempre devuelve un objeto { success, ... }
-async function apiFetch(url, { method = 'GET', body } = {}) {
+// autenticar: false -> no envía el token ni trata un 401 como sesión caducada (login)
+async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
     const headers = {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    const token = getAdminToken();
+    const token = autenticar ? getAdminToken() : null;
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const response = await fetch(url, {

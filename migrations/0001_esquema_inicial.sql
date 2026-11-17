@@ -1,7 +1,5 @@
--- Esquema de la base de datos D1 (SQLite) de la app de pádel.
--- Aplicar con:
---   npx wrangler d1 execute padel-db --remote --file=./schema.sql
---   npx wrangler d1 execute padel-db --local  --file=./schema.sql   (desarrollo)
+-- Migración 0001: esquema original (nombres de equipo en texto).
+-- En una base de datos que ya tenga estas tablas no hace nada.
 
 -- ===================== LIGA =====================
 CREATE TABLE IF NOT EXISTS liga_equipos (
