@@ -30,6 +30,12 @@
 .ui-aviso-error { border-color: rgba(239, 68, 68, 0.6); background: rgba(69, 10, 10, 0.95); }
 .ui-aviso-info  { border-color: rgba(56, 189, 248, 0.5); }
 
+.ui-aviso { display: flex; align-items: flex-start; gap: 0.6rem; }
+.ui-aviso-ico { width: 1.2rem; height: 1.2rem; margin-top: 0.05rem; }
+.ui-aviso-ok .ui-aviso-ico    { color: #34d399; }
+.ui-aviso-error .ui-aviso-ico { color: #f87171; }
+.ui-aviso-info .ui-aviso-ico  { color: #38bdf8; }
+
 .ui-aviso.ui-saliendo {
     opacity: 0;
     transform: translateY(8px);
@@ -76,6 +82,9 @@
 }
 
 .ui-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 1.2rem;
     color: #38bdf8;
 }
@@ -277,3 +286,19 @@ body.ui-ocupado { cursor: progress; }
     flex-shrink: 0;
     cursor: pointer;
 }
+
+/* ---------- Racha de resultados (ficha de pareja) ---------- */
+.racha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    vertical-align: middle;
+}
+.racha-v  { background: rgba(16, 185, 129, 0.2);  color: #34d399; }
+.racha-d1 { background: rgba(245, 158, 11, 0.2);  color: #fbbf24; }
+.racha-d0 { background: rgba(239, 68, 68, 0.2);   color: #f87171; }

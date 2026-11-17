@@ -9,7 +9,7 @@ test('la migración crea las 4 ligas originales en orden', async () => {
     const ligas = await getLigas(app);
     assert.deepEqual(ligas.map(l => l.slug),
         ['masculino_avanzado', 'masculino_intermedio', 'masculino_iniciacion', 'femenino']);
-    assert.equal(ligas[3].nombre, '👩 Femenino');
+    assert.equal(ligas[3].nombre, 'Femenino'); // la 0007 quita el emoji de los nombres por defecto
 });
 
 test('crear, renombrar y eliminar ligas', async () => {
@@ -36,7 +36,7 @@ test('crear, renombrar y eliminar ligas', async () => {
 
     // Renombrar cambia el nombre visible, no el slug
     assert.equal((await app.post('liga?action=renombrarLiga', { slug: 'iniciacion_junior', nombre: '🧒 Escuela' })).success, true);
-    assert.equal((await app.post('liga?action=renombrarLiga', { slug: 'iniciacion_junior', nombre: '👩 femenino' })).status, 409);
+    assert.equal((await app.post('liga?action=renombrarLiga', { slug: 'iniciacion_junior', nombre: 'femenino' })).status, 409);
     ligas = await getLigas(app);
     assert.equal(ligas.find(l => l.slug === 'iniciacion_junior').nombre, '🧒 Escuela');
 

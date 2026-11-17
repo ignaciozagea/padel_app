@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>🏆 Liga de Pádel | Gestión Profesional</title>
+    <title>Pádel GO · Ligas y torneos de pádel</title>
+    <meta name="description" content="Clasificaciones, calendario, resultados y torneos de pádel">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/comun.css">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -13,8 +16,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Pádel GO">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-    
 </head>
 <body>
 
@@ -22,62 +23,75 @@
 <div class="orb orb-2"></div>
 
 <div class="container">
-    <div class="hero">
-        <div class="eyebrow">
-            <span>🏸</span> La mejor gestión de pádel
+    <header class="topbar">
+        <a class="marca" href="/" aria-label="Pádel GO, inicio">
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg>
+            <span>Pádel GO</span>
+        </a>
+        <nav class="menu" aria-label="Secciones">
+            <a href="/" aria-current="page"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#inicio"></use></svg>Inicio</a>
+            <a href="/liga"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg>Liga</a>
+            <a href="/torneo"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Torneo</a>
+        </nav>
+    </header>
+
+    <main class="portada">
+        <div class="hero">
+            <div class="eyebrow">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg> Ligas y torneos de pádel
+            </div>
+            <h1>Pádel GO</h1>
+            <p>Clasificaciones, calendario y resultados de tu liga, y torneos de eliminación directa</p>
         </div>
-        <h1> Pádel GO</h1>
-        <p>Gestión de ligas, registro de resultados y organización de torneos</p>
-    </div>
 
-    <div class="buttons-container">
-        <a href="liga.html" class="btn btn-primary">
-            <span>🏆</span> Liga
-        </a>
-        <a href="torneo.html" class="btn btn-secondary">
-            <span>🎯</span> Torneo
-        </a>
-    </div>
+        <div class="buttons-container">
+            <a href="/liga" class="btn btn-primary">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg> Liga
+            </a>
+            <a href="/torneo" class="btn btn-secondary">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg> Torneo
+            </a>
+        </div>
 
-    <div class="admin-section">
-        <div id="adminLoggedOut">
-            <p>🔐 ¿Administrador?</p>
-            <button class="btn btn-admin" id="adminLoginBtn">
-                <span>👑</span> Inicia sesión aquí
+        <div class="admin-section">
+            <div id="adminLoggedOut">
+                <p><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#llave"></use></svg>¿Administras la liga?</p>
+                <button class="btn btn-admin" id="adminLoginBtn">
+                    <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#corona"></use></svg> Iniciar sesión
+                </button>
+            </div>
+            <div id="adminLoggedIn" style="display: none;">
+                <p><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#corona"></use></svg>Sesión de administrador iniciada <span id="sessionExpiry"></span></p>
+                <button class="btn btn-admin" id="adminLogoutBtn">
+                    <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#salir"></use></svg> Cerrar sesión
+                </button>
+            </div>
+        </div>
+
+        <!-- Solo aparece si el navegador permite instalar la web como app (js/index.js) -->
+        <div class="admin-section" id="installSection" style="display: none;">
+            <p><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#movil"></use></svg>Lleva Pádel GO en tu móvil</p>
+            <button class="btn btn-secondary" id="installAppBtn">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#instalar"></use></svg> Instalar app
             </button>
         </div>
-        <div id="adminLoggedIn" style="display: none;">
-            <p>👑 Sesión de administrador iniciada <span id="sessionExpiry"></span></p>
-            <button class="btn btn-admin" id="adminLogoutBtn">
-                <span>🚪</span> Cerrar sesión
-            </button>
-        </div>
-    </div>
-
-    <!-- Solo aparece si el navegador permite instalar la web como app (js/index.js) -->
-    <div class="admin-section" id="installSection" style="display: none;">
-        <p>📲 Lleva Pádel GO en tu móvil</p>
-        <button class="btn btn-secondary" id="installAppBtn">
-            <span>📲</span> Instalar app
-        </button>
-    </div>
+    </main>
 </div>
 
 <!-- Modal Login -->
 <div id="loginModal" class="modal">
-    <div class="modal-content">
-        <h3>🔐 Acceso Administrador</h3>
-        <input type="password" id="adminPassword" placeholder="Contraseña" autocomplete="off">
-        <button class="btn btn-primary" id="confirmLoginBtn" style="width: 100%;">Acceder</button>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="loginTitulo">
+        <h3 id="loginTitulo"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#llave"></use></svg>Acceso de administrador</h3>
+        <input type="password" id="adminPassword" placeholder="Contraseña" autocomplete="current-password" aria-label="Contraseña">
+        <button class="btn btn-primary" id="confirmLoginBtn" style="width: 100%; justify-content: center;">Entrar</button>
         <div id="loginError" class="error-msg"></div>
-        <button class="btn btn-secondary" onclick="cerrarModal()" style="margin-top: 1rem; width: 100%;">Cancelar</button>
+        <button class="btn btn-secondary" onclick="cerrarModal()" style="margin-top: 1rem; width: 100%; justify-content: center;">Cancelar</button>
     </div>
 </div>
 
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/index.js"></script>
-
 
 </body>
 </html>

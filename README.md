@@ -1,4 +1,4 @@
-# 🏆 Liga de Pádel - Gestión de Torneos y Ligas
+# 🎾 Pádel GO · Ligas y torneos de pádel
 
 <div align="center">
   <img src="https://img.shields.io/badge/Cloudflare_Pages-F38020?style=for-the-badge&logo=cloudflare&logoColor=white"/>
@@ -101,16 +101,17 @@ padel_app/
 |   ├──📄 torneo.html         # Gestión de torneos
 |   ├──📁 js/
 |   |   ├──📄 api.js          # Sesión, llamadas a la API y validación (compartido)
-|   |   ├──📄 ui.js           # Avisos, ventanas, carga y compartir (compartido)
+|   |   ├──📄 ui.js           # Iconos, avisos, ventanas, carga y compartir (compartido)
 |   |   ├──📄 index.js
 |   |   ├──📄 liga.js
 |   |   └──📄 torneo.js
 |   ├──📁 css/
-|   |   ├──📄 comun.css       # Estilos de los componentes compartidos
+|   |   ├──📄 base.css        # Diseño común: barra de navegación, tarjetas, botones, iconos
+|   |   ├──📄 comun.css       # Avisos, ventanas, ficha de pareja
 |   |   ├──📄 index.css
 |   |   ├──📄 liga.css
 |   |   └──📄 torneo.css
-|   ├──📁 img/icons/          # Iconos de la app (PWA)
+|   ├──📁 img/                # iconos.svg (iconos de la interfaz) e icons/ (iconos de la app)
 |   ├──📄 manifest.webmanifest # Datos para instalar la web como app
 |   └──📄 sw.js               # Service worker: funcionamiento sin conexión
 |
@@ -124,7 +125,8 @@ padel_app/
 |   ├──📄 0003_login_intentos.sql
 |   ├──📄 0004_historial_torneos.sql
 |   ├──📄 0005_ligas.sql
-|   └──📄 0006_super_tiebreak.sql
+|   ├──📄 0006_super_tiebreak.sql
+|   └──📄 0007_nombres_ligas_sin_emoji.sql
 |
 ├──📁 docs/capturas/          # Capturas de pantalla del README (no se publican)
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)

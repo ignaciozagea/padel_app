@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>🏆 Liga de Pádel | Gestión de Ligas</title>
+    <title>Liga · Pádel GO</title>
+    <meta name="description" content="Clasificación, calendario y resultados de la liga de pádel">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/liga.css">
     <link rel="stylesheet" href="css/comun.css">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -21,73 +23,93 @@
 <div class="orb orb-2"></div>
 
 <div class="container">
-    <div class="header">
-        <div class="logo">
-            <a href="index.html" style="text-decoration: none;">
-                <h1>🏆 Liga de Pádel</h1>
-            </a>
-            <p>Gestión profesional de ligas | Sistema 3 sets | Datos persistentes</p>
-        </div>
+    <header class="topbar">
+        <a class="marca" href="/" aria-label="Pádel GO, inicio">
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg>
+            <span>Pádel GO</span>
+        </a>
+        <nav class="menu" aria-label="Secciones">
+            <a href="/"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#inicio"></use></svg>Inicio</a>
+            <a href="/liga" aria-current="page"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg>Liga</a>
+            <a href="/torneo"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Torneo</a>
+        </nav>
         <div class="admin-badge" id="adminBadge" style="display: none;">
-            <span>👑 Modo Administrador</span>
-            <a href="#" class="btn btn-secondary btn-sm" onclick="cerrarSesion()">Cerrar sesión</a>
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#corona"></use></svg>
+            <span class="admin-texto">Administrador</span>
+            <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#salir"></use></svg>Salir
+            </button>
         </div>
+    </header>
+
+    <div class="page-head">
+        <h1><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg>Liga</h1>
+        <p>Clasificación, calendario y resultados</p>
     </div>
 
-    <!-- Navegación de Ligas -->
     <!-- Se rellena con las ligas de la base de datos (js/liga.js) -->
-    <div class="liga-nav" id="ligaNav"></div>
+    <div class="liga-nav" id="ligaNav" role="tablist" aria-label="Ligas"></div>
 
     <!-- Panel de Administración -->
     <div id="adminPanel" style="display: none;">
         <div class="admin-grid">
             <div class="card">
-                <h2>📋 Gestión de Equipos</h2>
+                <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#parejas"></use></svg>Parejas</h2>
                 <div class="form-group">
-                    <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)">
-                    <button class="btn btn-primary" id="addTeamBtn">➕ Agregar</button>
+                    <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)" maxlength="60">
+                    <button class="btn btn-primary" id="addTeamBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#mas"></use></svg>Añadir
+                    </button>
                 </div>
                 <div id="teamsList" class="teams-list"></div>
-                <div class="info-text">Total de equipos: <span id="teamCount">0</span></div>
+                <div class="info-text">Parejas inscritas: <span id="teamCount">0</span></div>
             </div>
 
             <div class="card">
-                <h2>⚙️ Acciones</h2>
+                <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#ajustes"></use></svg>Acciones</h2>
                 <div class="form-group">
-                    <button class="btn btn-primary" id="generateCalendarBtn">🎲 Generar Calendario</button>
-                    <button class="btn btn-danger" id="resetLigaBtn">🔄 Resetear Liga</button>
+                    <button class="btn btn-primary" id="generateCalendarBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#calendario"></use></svg>Generar calendario
+                    </button>
+                    <button class="btn btn-danger" id="resetLigaBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#reiniciar"></use></svg>Resetear liga
+                    </button>
                 </div>
                 <label class="ui-opcion">
                     <input type="checkbox" id="superTiebreakLiga">
-                    <span>🎾 Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
+                    <span>Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
                 </label>
             </div>
 
             <div class="card">
-                <h2>🏷️ Ligas</h2>
+                <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#etiqueta"></use></svg>Ligas</h2>
                 <div class="form-group">
-                    <input type="text" id="leagueName" placeholder="Nueva liga (ej: 🧒 Infantil)" maxlength="60">
-                    <button class="btn btn-primary" id="addLeagueBtn">➕ Crear</button>
+                    <input type="text" id="leagueName" placeholder="Nueva liga (ej: Infantil)" maxlength="60">
+                    <button class="btn btn-primary" id="addLeagueBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#mas"></use></svg>Crear
+                    </button>
                 </div>
                 <div id="leaguesList" class="teams-list"></div>
             </div>
         </div>
     </div>
-    
+
     <!-- Clasificación -->
-    <div class="card full-width">
+    <section class="card">
         <div class="card-cabecera">
-            <h2>🏆 Clasificación</h2>
-            <button class="btn btn-secondary btn-sm" id="shareStandingsBtn">📤 Compartir</button>
+            <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#medalla"></use></svg>Clasificación</h2>
+            <button class="btn btn-secondary btn-sm" id="shareStandingsBtn">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#compartir"></use></svg>Compartir
+            </button>
         </div>
         <div id="standingsContainer" class="standings-container"></div>
-    </div>
-    
+    </section>
+
     <!-- Calendario -->
-    <div class="card full-width">
-        <h2>📅 Calendario de Partidos (Mejor de 3 sets)</h2>
+    <section class="card">
+        <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#calendario"></use></svg>Calendario</h2>
         <div id="matchesContainer" class="matches-container"></div>
-    </div>
+    </section>
 </div>
 
 <script src="js/api.js"></script>

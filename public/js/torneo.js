@@ -103,10 +103,13 @@
                     <div class="history-item">
                         <div>
                             <div class="history-name">${escapeHtml(t.nombre || 'Torneo')}</div>
-                            <div class="history-meta">${escapeHtml(fecha)} · ${Number(t.num_equipos)} equipos</div>
-                            <div class="history-meta">🏆 ${escapeHtml(t.campeon || '-')} · 🥈 ${escapeHtml(t.subcampeon || '-')}</div>
+                            <div class="history-meta">${icono('calendario')} ${escapeHtml(fecha)} · ${Number(t.num_equipos)} parejas</div>
+                            <div class="history-meta">
+                                <span class="oro">${icono('trofeo')}</span> ${escapeHtml(t.campeon || '-')}
+                                · <span class="plata">${icono('medalla')}</span> ${escapeHtml(t.subcampeon || '-')}
+                            </div>
                         </div>
-                        <button class="btn btn-secondary btn-sm" onclick="verTorneoArchivado(${Number(t.id)})">👁️ Ver cuadro</button>
+                        <button class="btn btn-secondary btn-sm" onclick="verTorneoArchivado(${Number(t.id)})">${icono('ojo')}Ver cuadro</button>
                     </div>
                 `;
             }).join('');
@@ -133,7 +136,8 @@
         if (!puedeEditarCuadro()) return;
         const porDefecto = `Torneo ${new Date().toLocaleDateString('es-ES')}`;
         const nombre = await pedirTexto('Nombre con el que se guardará en el historial:', porDefecto, {
-            titulo: '📦 Guardar en el historial',
+            titulo: 'Guardar en el historial',
+            iconoTitulo: 'archivar',
             textoAceptar: 'Guardar'
         });
         if (nombre === null) return;
@@ -199,8 +203,8 @@
         if (archivo) {
             banner.style.display = 'flex';
             banner.innerHTML = `
-                <span>📚 Viendo el historial: <strong>${escapeHtml(archivo.nombre)}</strong></span>
-                <button class="btn btn-secondary btn-sm" onclick="volverAlActual()">↩️ Volver al torneo actual</button>
+                <span>${icono('historial')} Viendo el historial: <strong>${escapeHtml(archivo.nombre)}</strong></span>
+                <button class="btn btn-secondary btn-sm" onclick="volverAlActual()">${icono('volver')}Volver al torneo actual</button>
             `;
         } else {
             banner.style.display = 'none';
@@ -275,7 +279,7 @@
         const container = document.getElementById('teamsList');
 
         if (equiposTorneo.length === 0) {
-            container.innerHTML = '<p style="color: #94a3b8;">No hay equipos inscritos</p>';
+            container.innerHTML = '<p class="info-text" style="margin: 0;">Todavía no hay parejas inscritas</p>';
             return;
         }
 
@@ -283,9 +287,9 @@
         const puedeEliminar = isAdmin && !cuadroActualGenerado;
         container.innerHTML = equiposTorneo.map(equipo => `
             <div class="team-tag">
-                <span>🎾 ${escapeHtml(equipo.nombre)}</span>
-                ${isAdmin ? `<button class="edit-team" title="Cambiar nombre" onclick="renombrarEquipo(${Number(equipo.id)})">✎</button>` : ''}
-                ${puedeEliminar ? `<button class="remove-team" title="Eliminar" onclick="eliminarEquipo(${Number(equipo.id)})">✕</button>` : ''}
+                <span>${escapeHtml(equipo.nombre)}</span>
+                ${isAdmin ? `<button class="btn-ico" title="Cambiar nombre" aria-label="Cambiar nombre de la pareja" onclick="renombrarEquipo(${Number(equipo.id)})">${icono('editar')}</button>` : ''}
+                ${puedeEliminar ? `<button class="btn-ico peligro" title="Eliminar" aria-label="Quitar la pareja" onclick="eliminarEquipo(${Number(equipo.id)})">${icono('papelera')}</button>` : ''}
             </div>
         `).join('');
     }
@@ -295,7 +299,7 @@
         const equipo = equiposTorneo.find(e => e.id === id);
         if (!equipo) return;
 
-        const nombre = await pedirTexto('Nuevo nombre de la pareja:', equipo.nombre, { titulo: '✎ Cambiar nombre' });
+        const nombre = await pedirTexto('Nuevo nombre de la pareja:', equipo.nombre, { titulo: 'Cambiar nombre' });
         if (!nombre || nombre === equipo.nombre) return;
 
         if (await enviarAccion(url('renameEquipo'), { id, nombre }, { ok: `✅ Ahora se llama "${nombre}"`, error: 'Error al renombrar' })) {
@@ -313,7 +317,7 @@
         if (cuadroActualGenerado) {
             const seguro = await confirmar(
                 'Ya hay un cuadro generado. Si haces un nuevo sorteo se perderán sus resultados.',
-                { titulo: '🎲 Nuevo sorteo', textoAceptar: 'Sortear de nuevo', peligro: true }
+                { titulo: 'Nuevo sorteo', iconoTitulo: 'sorteo', textoAceptar: 'Sortear de nuevo', peligro: true }
             );
             if (!seguro) return;
         }
@@ -326,26 +330,31 @@
     }
 
     // ==================== MOSTRAR BRACKET ====================
+    // Cada ronda reparte sus partidos en huecos de la misma altura (.slot): así las líneas
+    // de unión del CSS llevan cada pareja de partidos al de la ronda siguiente
     function mostrarBracket() {
         const container = document.getElementById('bracketContainer');
         if (!torneo) return;
 
-        let html = '';
-        torneo.rounds.forEach((round, r) => {
+        container.innerHTML = torneo.rounds.map((round, r) => {
             const titulo = obtenerTituloRonda(r, torneo.rounds.length, round.length);
-            html += `<div class="round"><div class="round-title">${titulo}</div>`;
-            round.forEach((match, m) => { html += generarMatchHTML(r, m, match); });
-            html += `</div>`;
-        });
-        container.innerHTML = html;
+            const esFinal = r === torneo.rounds.length - 1;
+            return `
+                <div class="round">
+                    <div class="round-title">${esFinal ? icono('trofeo') : ''}${titulo}</div>
+                    <div class="round-slots">
+                        ${round.map((match, m) => `<div class="slot">${generarMatchHTML(r, m, match)}</div>`).join('')}
+                    </div>
+                </div>`;
+        }).join('');
     }
 
     function obtenerTituloRonda(ronda, total, numPartidos) {
-        if (ronda === total - 1) return '🏆 FINAL';
-        if (ronda === total - 2) return '🥉 SEMIFINAL';
-        if (ronda === total - 3) return '🎯 CUARTOS DE FINAL';
-        if (ronda === total - 4) return '📊 OCTAVOS DE FINAL';
-        return `RONDA ${ronda + 1} (${numPartidos} partidos)`;
+        if (ronda === total - 1) return 'Final';
+        if (ronda === total - 2) return 'Semifinales';
+        if (ronda === total - 3) return 'Cuartos de final';
+        if (ronda === total - 4) return 'Octavos de final';
+        return `Ronda ${ronda + 1} (${numPartidos} partidos)`;
     }
 
     function textoResultado(resultado) {
@@ -354,12 +363,11 @@
         return s;
     }
 
+    // Partido del cuadro como marcador: una fila por pareja con sus juegos en cada set
     function generarMatchHTML(ronda, indice, match) {
         // En la primera ronda un hueco vacío es un descanso; en las demás, un rival por decidir
         const esBye1 = ronda === 0 && !match.team1;
         const esBye2 = ronda === 0 && !match.team2;
-        const team1Display = match.team1 || (esBye1 ? '🔵 DESCANSO' : '?');
-        const team2Display = match.team2 || (esBye2 ? '🔵 DESCANSO' : '?');
         const resultado = match.resultado;
 
         const tieneGanador = !!match.winnerId;
@@ -369,38 +377,41 @@
         const siguiente = torneo.rounds[ronda + 1]?.[Math.floor(indice / 2)];
         const puedeCorregir = puedeEditarCuadro() && tieneGanador && !!resultado && !siguiente?.played;
 
-        const slot = (nombre, esGanador, sets) => `
-            <div class="team-slot ${esGanador ? 'winner' : ''}">
-                <span class="team-name">${escapeHtml(nombre)}</span>
-                ${resultado ? `<span class="team-score">${sets} sets</span>` : ''}
-            </div>`;
+        const sets = resultado ? [resultado.set1, resultado.set2, resultado.set3].filter(Boolean) : [];
+        const fila = (nombre, id, esBye, lado) => {
+            const otro = lado === 'local' ? 'visitante' : 'local';
+            const ganador = tieneGanador && match.winnerId === id;
+            const texto = nombre || (esBye ? 'Descanso' : 'Por decidir');
+            return `
+                <div class="match-fila ${ganador ? 'ganador' : ''} ${nombre ? '' : 'vacia'}">
+                    <span class="nombre">${ganador ? icono('check') : ''}${escapeHtml(texto)}</span>
+                    <span class="juegos">${sets.map(s => `<span class="juego ${s[lado] > s[otro] ? 'gana' : ''}">${Number(s[lado])}</span>`).join('')}</span>
+                </div>`;
+        };
 
-        let html = `<div class="match">
-            <div class="match-teams">
-                ${slot(team1Display, tieneGanador && match.winnerId === match.team1Id, resultado?.setsGanadosLocal ?? 0)}
-                ${slot(team2Display, tieneGanador && match.winnerId === match.team2Id, resultado?.setsGanadosVisitante ?? 0)}
-            </div>`;
-
+        let pie = '';
         if (tieneGanador && resultado) {
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#10b981;">✅ ${textoResultado(resultado)}</div>`;
-            html += `<div style="text-align:center; font-size:0.7rem;">🏆 Avanza: ${escapeHtml(match.winner)}</div>`;
+            pie = `<span class="estado">${icono('check-circulo')} Jugado</span>`;
             if (puedeCorregir) {
-                html += `<button class="btn-edit-match" onclick="abrirModalResultado(${ronda}, ${indice})">✏️ Corregir resultado</button>`;
+                pie += `<button class="btn-edit-match" onclick="abrirModalResultado(${ronda}, ${indice})">${icono('editar')}Corregir</button>`;
             }
         } else if (tieneGanador && (esBye1 || esBye2)) {
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#f59e0b;">🔄 ${escapeHtml(match.winner)} avanza automáticamente por descanso</div>`;
-        } else if (tieneGanador) {
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem;">🏆 Avanza: ${escapeHtml(match.winner)}</div>`;
+            pie = `<span class="estado descanso">${icono('volver')} Pasa por descanso</span>`;
         } else if (puedeJugar) {
-            html += `<button class="btn-play" onclick="abrirModalResultado(${ronda}, ${indice})">🎾 Registrar Resultado (3 sets)</button>`;
+            pie = `<span class="estado">${icono('reloj')} Pendiente</span>
+                   <button class="btn-play" onclick="abrirModalResultado(${ronda}, ${indice})">${icono('mas')}Resultado</button>`;
         } else if (ambosPresentes) {
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#94a3b8;">⏳ Partido pendiente</div>`;
-        } else {
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#94a3b8;">⏳ Esperando rivales...</div>`;
+            pie = `<span class="estado">${icono('reloj')} Pendiente</span>`;
+        } else if (!tieneGanador) {
+            pie = `<span class="estado">${icono('reloj')} Esperando rival</span>`;
         }
 
-        html += `</div>`;
-        return html;
+        return `
+            <div class="match">
+                ${fila(match.team1, match.team1Id, esBye1, 'local')}
+                ${fila(match.team2, match.team2Id, esBye2, 'visitante')}
+                ${pie ? `<div class="match-pie">${pie}</div>` : ''}
+            </div>`;
     }
 
     // ==================== MODAL DE RESULTADOS ====================
@@ -411,8 +422,7 @@
         const r = match.resultado; // si existe, se está corrigiendo
         matchActual = { id: match.dbId, equipo1: match.team1, equipo2: match.team2, correccion: !!r };
 
-        document.getElementById('modalTitle').textContent =
-            r ? '✏️ Corregir Resultado del Partido' : '🎾 Registrar Resultado del Partido';
+        document.getElementById('modalTitle').textContent = r ? 'Corregir resultado' : 'Registrar resultado';
         document.getElementById('modalTeams').innerHTML = `
             <strong>${escapeHtml(match.team1)}</strong> vs <strong>${escapeHtml(match.team2)}</strong>
         `;
@@ -427,7 +437,7 @@
 
         // Tercer set: normal o súper tie-break según la opción del torneo
         const stb = superTiebreak;
-        document.getElementById('modalSet3Label').textContent = stb ? '🎾 SÚPER TIE-BREAK (si 1-1, a 10)' : '🎾 SET 3 (opcional)';
+        document.getElementById('modalSet3Label').textContent = stb ? 'Súper tie-break (si 1-1)' : 'Set 3 (si 1-1)';
         for (const id of ['modal_set3_local', 'modal_set3_visit']) document.getElementById(id).max = stb ? 30 : 7;
 
         document.getElementById('resultModal').classList.add('active');
@@ -438,7 +448,7 @@
         const partido = matchActual;
         const seguro = await confirmar(
             `¿Anular el resultado de ${partido.equipo1} vs ${partido.equipo2}?\nEl partido volverá a quedar pendiente.`,
-            { titulo: 'Anular resultado', textoAceptar: 'Anular', peligro: true }
+            { titulo: 'Anular resultado', textoAceptar: 'Anular', iconoAceptar: 'papelera', peligro: true }
         );
         if (!seguro) return;
 
@@ -496,12 +506,12 @@
         }
         container.style.display = 'block';
         container.innerHTML = `
-            <h2>🏆 CAMPEÓN DEL TORNEO 🏆</h2>
-            <h1 style="font-size: 2rem; margin-top: 0.5rem;">🎉 ${escapeHtml(ganador)} 🎉</h1>
-            <p style="margin-top: 0.5rem;">¡Felicidades a los campeones!</p>
+            ${icono('trofeo', 'ico-campeon')}
+            <div class="etiqueta">Campeones del torneo</div>
+            <div class="campeon">${escapeHtml(ganador)}</div>
             ${puedeEditarCuadro() && torneoInfo?.estado === 'activo' ? `
                 <button class="btn btn-primary" style="margin-top: 1rem;" onclick="archivarTorneo()">
-                    📦 Guardar en el historial y empezar un torneo nuevo
+                    ${icono('archivar')}Guardar en el historial y empezar otro torneo
                 </button>
             ` : ''}
         `;
@@ -511,7 +521,7 @@
         if (!isAdmin) return;
         const seguro = await confirmar(
             '¿Resetear el torneo actual?\nSe perderán sus parejas y resultados. El historial se conserva.',
-            { titulo: '🔄 Resetear torneo', textoAceptar: 'Resetear', peligro: true }
+            { titulo: 'Resetear torneo', iconoTitulo: 'reiniciar', textoAceptar: 'Resetear', peligro: true }
         );
         if (!seguro) return;
 
@@ -528,7 +538,7 @@
         const lineas = [`🏆 *${nombre}*`];
 
         torneo.rounds.forEach((round, r) => {
-            const titulo = obtenerTituloRonda(r, torneo.rounds.length, round.length).replace(/^\S+\s/, '');
+            const titulo = obtenerTituloRonda(r, torneo.rounds.length, round.length);
             lineas.push('', `*${titulo}*`);
             for (const m of round) {
                 if (m.resultado) {
