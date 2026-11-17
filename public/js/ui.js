@@ -198,3 +198,11 @@ function compartirTexto(titulo, texto) {
         ancho: 520
     });
 }
+
+// ---------- App instalable (PWA) ----------
+// El service worker permite instalar la web en el móvil y abrirla sin conexión (ver /sw.js)
+if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(e => console.warn('Service worker no registrado:', e));
+    });
+}

@@ -6,6 +6,13 @@
     <title>🏆 Liga de Pádel | Gestión Profesional</title>
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/comun.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Pádel GO">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     
 </head>
@@ -33,9 +40,25 @@
     </div>
 
     <div class="admin-section">
-        <p>🔐 ¿Administrador?</p>
-        <button class="btn btn-admin" id="adminLoginBtn">
-            <span>👑</span> Inicia sesión aquí
+        <div id="adminLoggedOut">
+            <p>🔐 ¿Administrador?</p>
+            <button class="btn btn-admin" id="adminLoginBtn">
+                <span>👑</span> Inicia sesión aquí
+            </button>
+        </div>
+        <div id="adminLoggedIn" style="display: none;">
+            <p>👑 Sesión de administrador iniciada <span id="sessionExpiry"></span></p>
+            <button class="btn btn-admin" id="adminLogoutBtn">
+                <span>🚪</span> Cerrar sesión
+            </button>
+        </div>
+    </div>
+
+    <!-- Solo aparece si el navegador permite instalar la web como app (js/index.js) -->
+    <div class="admin-section" id="installSection" style="display: none;">
+        <p>📲 Lleva Pádel GO en tu móvil</p>
+        <button class="btn btn-secondary" id="installAppBtn">
+            <span>📲</span> Instalar app
         </button>
     </div>
 </div>

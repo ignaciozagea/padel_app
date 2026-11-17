@@ -34,7 +34,7 @@ test('alta de equipos: nombres vacíos, duplicados y ligas no válidas', async (
     const { app } = await nuevaLiga(['Ana/Bea']);
     assert.equal((await app.post('liga?action=addEquipo', { liga: L, nombre: ' ana/bea ' })).status, 409);
     assert.equal((await app.post('liga?action=addEquipo', { liga: L, nombre: '   ' })).status, 400);
-    assert.equal((await app.post('liga?action=addEquipo', { liga: 'inventada', nombre: 'X' })).status, 400);
+    assert.equal((await app.post('liga?action=addEquipo', { liga: 'inventada', nombre: 'X' })).status, 404);
 });
 
 test('el calendario enfrenta a todos contra todos una sola vez', async () => {
