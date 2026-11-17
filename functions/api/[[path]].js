@@ -26,7 +26,7 @@ const ACCIONES_ADMIN = {
     liga: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'generarCalendario',
            'guardarResultado', 'anularResultado', 'resetLiga'],
     torneo: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'crearTorneo',
-             'guardarPartido', 'anularPartido', 'resetTorneo']
+             'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo']
 };
 
 class HttpError extends Error {
@@ -84,7 +84,7 @@ export async function onRequest(context) {
         }
 
         if (recurso === 'liga') return await handleLiga(request, env.DB, url, action);
-        return await handleTorneo(request, env.DB, action);
+        return await handleTorneo(request, env.DB, url, action);
     } catch (error) {
         if (error instanceof HttpError) {
             return json({ success: false, error: error.message }, error.status, error.headers);
@@ -204,6 +204,13 @@ function leerJuegos(valor, numSet) {
     return n;
 }
 
+// Un set de pádel termina 6-0..6-4, 7-5 o 7-6 (tie-break)
+function setValido(a, b) {
+    const max = Math.max(a, b);
+    const min = Math.min(a, b);
+    return (max === 6 && min <= 4) || (max === 7 && (min === 5 || min === 6));
+}
+
 // Valida un resultado al mejor de 3 sets y devuelve los sets normalizados
 function analizarSets(data) {
     const sets = [1, 2, 3].map(i => ({
@@ -225,6 +232,9 @@ function analizarSets(data) {
     const jugados = haySet3 ? sets : sets.slice(0, 2);
     jugados.forEach((s, i) => {
         if (s.local === s.visitante) throw new HttpError(400, `El set ${i + 1} no puede quedar empatado`);
+        if (!setValido(s.local, s.visitante)) {
+            throw new HttpError(400, `El set ${i + 1} (${s.local}-${s.visitante}) no es un resultado válido: debe ser 6-0 a 6-4, 7-5 o 7-6`);
+        }
         if (i < 2) s.local > s.visitante ? setsLocal++ : setsVisitante++;
     });
 
@@ -263,6 +273,68 @@ async function comprobarNombreLibreLiga(db, liga, nombre, exceptoId = 0) {
     if (existe) throw new HttpError(409, 'Ya existe un equipo con ese nombre en esta liga');
 }
 
+// Clasificación de la liga. Criterios, en orden:
+//   1. Puntos
+//   2. Enfrentamiento directo (solo si empatan exactamente dos equipos)
+//   3. Diferencia de sets
+//   4. Diferencia de juegos
+//   5. Sets a favor
+//   6. Nombre (orden alfabético)
+function calcularClasificacion(equipos, partidos) {
+    const stats = new Map(equipos.map(e => [e.id, {
+        id: e.id, nombre: e.nombre,
+        pj: 0, pg: 0, pp1: 0, pp0: 0, puntos: 0,
+        sets_favor: 0, sets_contra: 0, juegos_favor: 0, juegos_contra: 0
+    }]));
+    const clave = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+    const ganadorDirecto = new Map();
+
+    const sumar = (s, pts, sf, sc, jf, jc) => {
+        s.pj++;
+        s.puntos += pts;
+        if (pts === 3) s.pg++; else if (pts === 1) s.pp1++; else s.pp0++;
+        s.sets_favor += sf; s.sets_contra += sc;
+        s.juegos_favor += jf; s.juegos_contra += jc;
+    };
+
+    for (const p of partidos) {
+        const local = stats.get(p.local_id);
+        const visitante = stats.get(p.visitante_id);
+        if (!local || !visitante) continue;
+
+        let sl = 0, sv = 0, jl = 0, jv = 0;
+        for (let n = 1; n <= 3; n++) {
+            const a = p[`set${n}_local`];
+            const b = p[`set${n}_visitante`];
+            if (a === null || a === undefined || b === null || b === undefined) continue;
+            jl += a; jv += b;
+            if (a > b) sl++; else sv++;
+        }
+        sumar(local, p.puntos_local, sl, sv, jl, jv);
+        sumar(visitante, p.puntos_visitante, sv, sl, jv, jl);
+        ganadorDirecto.set(clave(p.local_id, p.visitante_id), sl > sv ? p.local_id : p.visitante_id);
+    }
+
+    const lista = [...stats.values()];
+    const empatadosPorPuntos = new Map();
+    for (const s of lista) empatadosPorPuntos.set(s.puntos, (empatadosPorPuntos.get(s.puntos) || 0) + 1);
+
+    lista.sort((a, b) => {
+        if (a.puntos !== b.puntos) return b.puntos - a.puntos;
+        if (empatadosPorPuntos.get(a.puntos) === 2) {
+            const g = ganadorDirecto.get(clave(a.id, b.id));
+            if (g === a.id) return -1;
+            if (g === b.id) return 1;
+        }
+        return ((b.sets_favor - b.sets_contra) - (a.sets_favor - a.sets_contra))
+            || ((b.juegos_favor - b.juegos_contra) - (a.juegos_favor - a.juegos_contra))
+            || (b.sets_favor - a.sets_favor)
+            || a.nombre.localeCompare(b.nombre, 'es');
+    });
+
+    return lista.map((s, i) => ({ ...s, posicion: i + 1 }));
+}
+
 // Calendario todos contra todos (método del círculo). Devuelve [[ [localId, visitanteId], ... ], ...]
 function roundRobin(ids) {
     const t = mezclar(ids);
@@ -286,29 +358,13 @@ function roundRobin(ids) {
 async function handleLiga(request, db, url, action) {
     switch (action) {
         case 'getEquipos': {
-            // La clasificación se calcula a partir de los partidos jugados
+            // Devuelve los equipos ordenados por clasificación (calculada a partir de los partidos jugados)
             const liga = validarLiga(url.searchParams.get('liga') || 'masculino_avanzado');
-            const result = await db.prepare(`
-                WITH resultados AS (
-                    SELECT local_id AS equipo_id, puntos_local AS pts
-                    FROM liga_calendario WHERE liga_nombre = ?1 AND completado = 1
-                    UNION ALL
-                    SELECT visitante_id, puntos_visitante
-                    FROM liga_calendario WHERE liga_nombre = ?1 AND completado = 1
-                )
-                SELECT e.id, e.nombre,
-                       COUNT(r.equipo_id)          AS pj,
-                       COALESCE(SUM(r.pts = 3), 0) AS pg,
-                       COALESCE(SUM(r.pts = 1), 0) AS pp1,
-                       COALESCE(SUM(r.pts = 0), 0) AS pp0,
-                       COALESCE(SUM(r.pts), 0)     AS puntos
-                FROM liga_equipos e
-                LEFT JOIN resultados r ON r.equipo_id = e.id
-                WHERE e.liga_nombre = ?1
-                GROUP BY e.id, e.nombre
-                ORDER BY e.nombre
-            `).bind(liga).all();
-            return json({ success: true, data: result.results });
+            const [equipos, partidos] = await Promise.all([
+                db.prepare('SELECT id, nombre FROM liga_equipos WHERE liga_nombre = ?').bind(liga).all(),
+                db.prepare('SELECT * FROM liga_calendario WHERE liga_nombre = ? AND completado = 1').bind(liga).all()
+            ]);
+            return json({ success: true, data: calcularClasificacion(equipos.results, partidos.results) });
         }
 
         case 'addEquipo': {
@@ -471,9 +527,42 @@ async function torneoTienePartidos(db, torneoId) {
 }
 
 async function obtenerEquipoTorneo(db, id) {
-    const equipo = await db.prepare('SELECT * FROM torneo_equipos WHERE id = ?').bind(id).first();
+    const equipo = await db.prepare(`
+        SELECT e.*, t.estado AS torneo_estado
+        FROM torneo_equipos e JOIN torneo t ON t.id = e.torneo_id
+        WHERE e.id = ?
+    `).bind(id).first();
     if (!equipo) throw new HttpError(404, 'Equipo no encontrado');
+    if (equipo.torneo_estado === 'archivado') throw new HttpError(409, 'No se pueden modificar torneos archivados');
     return equipo;
+}
+
+// Partidos de un torneo con los nombres de los equipos
+async function partidosTorneo(db, torneoId) {
+    const r = await db.prepare(`
+        SELECT p.*, e1.nombre AS equipo1, e2.nombre AS equipo2, g.nombre AS ganador
+        FROM torneo_partidos p
+        LEFT JOIN torneo_equipos e1 ON e1.id = p.equipo1_id
+        LEFT JOIN torneo_equipos e2 ON e2.id = p.equipo2_id
+        LEFT JOIN torneo_equipos g  ON g.id  = p.ganador_id
+        WHERE p.torneo_id = ?
+        ORDER BY p.ronda, p.orden
+    `).bind(torneoId).all();
+    return r.results;
+}
+
+// El campeón es el ganador de la final (último partido de la última ronda)
+function campeonDe(partidos) {
+    const final = partidos[partidos.length - 1];
+    return final && final.completado ? final.ganador : null;
+}
+
+async function borrarTorneo(db, torneoId) {
+    await db.batch([
+        db.prepare('DELETE FROM torneo_partidos WHERE torneo_id = ?').bind(torneoId),
+        db.prepare('DELETE FROM torneo_equipos WHERE torneo_id = ?').bind(torneoId),
+        db.prepare('DELETE FROM torneo WHERE id = ?').bind(torneoId)
+    ]);
 }
 
 async function comprobarNombreLibreTorneo(db, torneoId, nombre, exceptoId = 0) {
@@ -507,34 +596,65 @@ async function obtenerPartidoTorneo(db, id) {
     return { partido, siguiente, campoSiguiente };
 }
 
-async function handleTorneo(request, db, action) {
+async function handleTorneo(request, db, url, action) {
     switch (action) {
         case 'getTorneo': {
-            const torneo = await obtenerTorneoActual(db);
-            if (!torneo) return json({ success: true, data: null });
+            // Sin id: el torneo actual. Con id: cualquier torneo (p. ej. uno archivado del historial)
+            const id = url.searchParams.get('id');
+            const torneo = id
+                ? await db.prepare('SELECT * FROM torneo WHERE id = ?').bind(id).first()
+                : await obtenerTorneoActual(db);
+            if (!torneo) {
+                if (id) throw new HttpError(404, 'Torneo no encontrado');
+                return json({ success: true, data: null });
+            }
 
             const [equipos, partidos] = await Promise.all([
                 db.prepare('SELECT id, nombre FROM torneo_equipos WHERE torneo_id = ? ORDER BY orden, id')
                     .bind(torneo.id).all(),
-                db.prepare(`
-                    SELECT p.*, e1.nombre AS equipo1, e2.nombre AS equipo2, g.nombre AS ganador
-                    FROM torneo_partidos p
-                    LEFT JOIN torneo_equipos e1 ON e1.id = p.equipo1_id
-                    LEFT JOIN torneo_equipos e2 ON e2.id = p.equipo2_id
-                    LEFT JOIN torneo_equipos g  ON g.id  = p.ganador_id
-                    WHERE p.torneo_id = ?
-                    ORDER BY p.ronda, p.orden
-                `).bind(torneo.id).all()
+                partidosTorneo(db, torneo.id)
             ]);
-
-            // El campeón es el ganador de la final (la última ronda)
-            const final = partidos.results[partidos.results.length - 1];
-            const ganador = final && final.completado ? final.ganador : null;
 
             return json({
                 success: true,
-                data: { torneo: { ...torneo, ganador }, equipos: equipos.results, partidos: partidos.results }
+                data: { torneo: { ...torneo, ganador: campeonDe(partidos) }, equipos: equipos.results, partidos }
             });
+        }
+
+        case 'getHistorial': {
+            const result = await db.prepare(`
+                SELECT t.id, t.nombre, t.creado_en, t.finalizado_en,
+                       (SELECT COUNT(*) FROM torneo_equipos e WHERE e.torneo_id = t.id) AS num_equipos,
+                       (SELECT g.nombre FROM torneo_partidos p JOIN torneo_equipos g ON g.id = p.ganador_id
+                         WHERE p.torneo_id = t.id ORDER BY p.ronda DESC, p.orden DESC LIMIT 1) AS campeon,
+                       (SELECT CASE WHEN p.ganador_id = p.equipo1_id THEN e2.nombre ELSE e1.nombre END
+                          FROM torneo_partidos p
+                          LEFT JOIN torneo_equipos e1 ON e1.id = p.equipo1_id
+                          LEFT JOIN torneo_equipos e2 ON e2.id = p.equipo2_id
+                         WHERE p.torneo_id = t.id ORDER BY p.ronda DESC, p.orden DESC LIMIT 1) AS subcampeon
+                FROM torneo t
+                WHERE t.estado = 'archivado'
+                ORDER BY COALESCE(t.finalizado_en, 0) DESC, t.id DESC
+            `).all();
+            return json({ success: true, data: result.results });
+        }
+
+        case 'archivarTorneo': {
+            // Guarda el torneo terminado en el historial; el siguiente equipo que se añada abre un torneo nuevo
+            const data = await leerJson(request);
+            const torneo = await obtenerTorneoActual(db);
+            if (!torneo || torneo.estado !== 'activo') throw new HttpError(400, 'No hay ningún torneo en juego');
+            if (!campeonDe(await partidosTorneo(db, torneo.id))) {
+                throw new HttpError(409, 'Solo se puede archivar un torneo terminado (con la final jugada)');
+            }
+            const ahora = Date.now();
+            const nombre = data.nombre === undefined || String(data.nombre).trim() === ''
+                ? `Torneo ${new Date(ahora).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}`
+                : validarNombre(data.nombre);
+
+            await db.prepare("UPDATE torneo SET estado = 'archivado', nombre = ?, finalizado_en = ? WHERE id = ?")
+                .bind(nombre, ahora, torneo.id).run();
+            return json({ success: true, nombre });
         }
 
         case 'addEquipo': {
@@ -593,7 +713,7 @@ async function handleTorneo(request, db, action) {
             );
             const batch = [
                 db.prepare('DELETE FROM torneo_partidos WHERE torneo_id = ?').bind(torneo.id),
-                db.prepare("UPDATE torneo SET estado = 'activo' WHERE id = ?").bind(torneo.id)
+                db.prepare("UPDATE torneo SET estado = 'activo', creado_en = ? WHERE id = ?").bind(Date.now(), torneo.id)
             ];
 
             // Cuadro de eliminación directa
@@ -695,11 +815,9 @@ async function handleTorneo(request, db, action) {
         }
 
         case 'resetTorneo': {
-            await db.batch([
-                db.prepare('DELETE FROM torneo_partidos'),
-                db.prepare('DELETE FROM torneo_equipos'),
-                db.prepare('DELETE FROM torneo')
-            ]);
+            // Borra solo el torneo actual; el historial (torneos archivados) se conserva
+            const torneo = await obtenerTorneoActual(db);
+            if (torneo) await borrarTorneo(db, torneo.id);
             return json({ success: true });
         }
 

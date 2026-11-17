@@ -266,6 +266,48 @@
             box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
         }
 
+        /* Historial de torneos */
+        .archive-banner {
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 16px;
+            color: #f59e0b;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(56, 189, 248, 0.06);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+            border-radius: 16px;
+        }
+
+        .history-name {
+            font-weight: 600;
+        }
+
+        .history-meta {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 0.2rem;
+        }
+
         .winner-announcement {
             text-align: center;
             padding: 1.5rem;

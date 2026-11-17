@@ -74,7 +74,9 @@
             return;
         }
 
-        container.innerHTML = equipos.map(equipo => `
+        // La API devuelve los equipos ordenados por clasificación; aquí se listan alfabéticamente
+        const porNombre = [...equipos].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+        container.innerHTML = porNombre.map(equipo => `
             <div class="team-tag">
                 <span>🎾 ${escapeHtml(equipo.nombre)}</span>
                 ${isAdmin ? `
@@ -410,17 +412,19 @@
             return;
         }
 
-        const ranking = [...equipos].sort((a, b) =>
-            (b.puntos - a.puntos) || (b.pg - a.pg) || (b.pp1 - a.pp1) || a.nombre.localeCompare(b.nombre)
-        );
+        // El orden (con desempates) lo calcula el servidor
         const medallas = ['🏆', '🥈', '🥉'];
+        const conSigno = n => (n > 0 ? `+${n}` : `${n}`);
 
         let html = '<div class="standings-wrapper"><table class="standings-table">';
         html += '<thead><tr>';
-        html += '<th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PP1</th><th>PP0</th><th>Pts</th>';
+        html += '<th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PP1</th><th>PP0</th>';
+        html += '<th title="Diferencia de sets">DS</th><th title="Diferencia de juegos">DJ</th><th>Pts</th>';
         html += '</tr></thead><tbody>';
 
-        ranking.forEach((equipo, idx) => {
+        equipos.forEach((equipo, idx) => {
+            const ds = (equipo.sets_favor || 0) - (equipo.sets_contra || 0);
+            const dj = (equipo.juegos_favor || 0) - (equipo.juegos_contra || 0);
             html += `
                 <tr>
                     <td>${idx + 1}${medallas[idx] ? ' ' + medallas[idx] : ''}</td>
@@ -429,12 +433,17 @@
                     <td>${equipo.pg || 0}</td>
                     <td>${equipo.pp1 || 0}</td>
                     <td>${equipo.pp0 || 0}</td>
+                    <td>${conSigno(ds)}</td>
+                    <td>${conSigno(dj)}</td>
                     <td><strong style="color: #38bdf8;">${equipo.puntos || 0}</strong></td>
                 </tr>
             `;
         });
 
         html += '</tbody></table></div>';
+        html += `<p class="info-text" style="margin-top: 0.5rem; font-size: 0.75rem;">
+            Desempates: enfrentamiento directo (si empatan dos equipos), diferencia de sets, diferencia de juegos y sets a favor.
+        </p>`;
         container.innerHTML = html;
     }
 
