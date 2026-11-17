@@ -106,13 +106,22 @@ function setValido(a, b) {
     return (max === 6 && min <= 4) || (max === 7 && (min === 5 || min === 6));
 }
 
+// Súper tie-break: a 10 puntos con 2 de diferencia (10-0..10-8, 11-9, 12-10...)
+function superTiebreakValido(a, b) {
+    const max = Math.max(a, b);
+    const min = Math.min(a, b);
+    return (max === 10 && min <= 8) || (max > 10 && max - min === 2);
+}
+
 // Valida un resultado al mejor de 3 sets. sets = [[local, visitante], x3] (null si vacío)
+// superTiebreak: el tercer set se juega como súper tie-break
 // Devuelve { error } o { setsLocal, setsVisitante, haySet3 }
-function validarResultado(sets) {
-    const fuera = v => v !== null && (!Number.isInteger(v) || v < 0 || v > 7);
+function validarResultado(sets, { superTiebreak = false } = {}) {
     for (let i = 0; i < 3; i++) {
+        const maximo = i === 2 && superTiebreak ? 30 : 7;
+        const fuera = v => v !== null && (!Number.isInteger(v) || v < 0 || v > maximo);
         if (fuera(sets[i][0]) || fuera(sets[i][1])) {
-            return { error: `❌ Valor no válido en el set ${i + 1} (entre 0 y 7)` };
+            return { error: `❌ Valor no válido en el set ${i + 1} (entre 0 y ${maximo})` };
         }
     }
     for (let i = 0; i < 2; i++) {
@@ -125,7 +134,12 @@ function validarResultado(sets) {
     const haySet3 = sets[2][0] !== null;
     for (let i = 0; i < (haySet3 ? 3 : 2); i++) {
         const [a, b] = sets[i];
-        if (a !== b && !setValido(a, b)) {
+        if (a === b) continue; // el empate se avisa más abajo
+        if (i === 2 && superTiebreak) {
+            if (!superTiebreakValido(a, b)) {
+                return { error: `❌ El súper tie-break (${a}-${b}) no es válido: se gana a 10 puntos con 2 de diferencia (10-8, 11-9, 12-10...)` };
+            }
+        } else if (!setValido(a, b)) {
             return { error: `❌ El set ${i + 1} (${a}-${b}) no es válido: debe ser 6-0 a 6-4, 7-5 o 7-6` };
         }
     }

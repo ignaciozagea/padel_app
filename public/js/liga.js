@@ -43,6 +43,7 @@
                 if (e.key === 'Enter') agregarEquipo();
             });
             document.getElementById('addLeagueBtn')?.addEventListener('click', crearLiga);
+            document.getElementById('superTiebreakLiga')?.addEventListener('change', cambiarSuperTiebreak);
             document.getElementById('leagueName')?.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') crearLiga();
             });
@@ -83,17 +84,49 @@
         if (!lista) return;
         lista.innerHTML = ligas.map(l => `
             <div class="team-tag">
-                <span>${escapeHtml(l.nombre)} <small style="color: #94a3b8;">(${Number(l.num_equipos)})</small></span>
+                <span>${escapeHtml(l.nombre)} <small style="color: #94a3b8;">(${Number(l.num_equipos)}${l.super_tiebreak ? ' · STB' : ''})</small></span>
                 <button class="edit-team" title="Cambiar nombre" onclick="renombrarLiga('${escapeHtml(l.slug)}')">✎</button>
                 <button class="remove-team" title="Eliminar" onclick="eliminarLiga('${escapeHtml(l.slug)}')">✕</button>
             </div>
         `).join('');
+        mostrarOpcionesLiga();
+    }
+
+    // ¿La liga seleccionada juega el tercer set como súper tie-break?
+    function usaSuperTiebreak() {
+        return !!ligas.find(l => l.slug === currentLiga)?.super_tiebreak;
+    }
+
+    function mostrarOpcionesLiga() {
+        const casilla = document.getElementById('superTiebreakLiga');
+        if (!casilla) return;
+        casilla.checked = usaSuperTiebreak();
+        casilla.disabled = !currentLiga;
+    }
+
+    async function cambiarSuperTiebreak(e) {
+        const activar = e.target.checked;
+        const ok = await enviarAccion(url('configurarLiga'), { slug: currentLiga, super_tiebreak: activar }, {
+            ok: activar
+                ? `✅ En ${nombreLiga()} el tercer set será un súper tie-break`
+                : `✅ En ${nombreLiga()} el tercer set vuelve a ser un set normal`,
+            error: 'Error al cambiar la opción'
+        });
+        if (!ok) {
+            e.target.checked = !activar;  // deshacer el cambio visual
+            return;
+        }
+        const liga = ligas.find(l => l.slug === currentLiga);
+        if (liga) liga.super_tiebreak = activar ? 1 : 0;
+        mostrarLigas();
+        mostrarCalendario();
     }
 
     function seleccionarLiga(slug) {
         currentLiga = slug || null;
         editando.clear();
         document.querySelectorAll('.liga-btn').forEach(b => b.classList.toggle('active', b.dataset.liga === currentLiga));
+        mostrarOpcionesLiga();
 
         // Mantener la liga en la URL para poder compartir el enlace
         const direccion = new URL(location.href);
@@ -268,7 +301,10 @@
             return;
         }
 
-        let html = '';
+        // Aviso para todos (no solo admin) de cómo se juega el tercer set en esta liga
+        let html = usaSuperTiebreak()
+            ? '<p class="info-text" style="margin-bottom: 1rem;">🎾 En esta liga el tercer set se juega como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2).</p>'
+            : '';
         for (const jornada in calendario) {
             const j = Number(jornada);
             html += `
@@ -356,16 +392,22 @@
 
         // Al corregir, el formulario se rellena con el resultado guardado
         const valor = v => (enEdicion && v !== null && v !== undefined) ? `value="${Number(v)}"` : '';
-        const setInput = (n, opcional) => `
+        const stb = usaSuperTiebreak();
+        const setInput = (n, opcional) => {
+            const esStb = n === 3 && stb;
+            const etiqueta = esStb ? '🎾 SÚPER TIE-BREAK (si 1-1, a 10)' : `🎾 SET ${n}${opcional ? ' (opcional)' : ''}`;
+            const max = esStb ? 30 : 7;
+            return `
             <div class="set-card">
-                <label>🎾 SET ${n}${opcional ? ' (opcional)' : ''}</label>
+                <label>${etiqueta}</label>
                 <div class="set-inputs">
-                    <input type="number" id="set${n}_local_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;" ${valor(partido[`set${n}_local`])}>
+                    <input type="number" id="set${n}_local_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="${max}" step="1" style="width:55px;" ${valor(partido[`set${n}_local`])}>
                     <span>-</span>
-                    <input type="number" id="set${n}_visit_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;" ${valor(partido[`set${n}_visitante`])}>
+                    <input type="number" id="set${n}_visit_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="${max}" step="1" style="width:55px;" ${valor(partido[`set${n}_visitante`])}>
                 </div>
             </div>
         `;
+        };
 
         return `
             <div class="partido">
@@ -394,7 +436,7 @@
             leerNumero(`set${n}_local_${jornada}_${idx}`),
             leerNumero(`set${n}_visit_${jornada}_${idx}`)
         ]);
-        const validacion = validarResultado(sets);
+        const validacion = validarResultado(sets, { superTiebreak: usaSuperTiebreak() });
         if (validacion.error) {
             notificar(validacion.error, 'error');
             return;

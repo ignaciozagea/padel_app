@@ -23,6 +23,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **CRUD completo de equipos**: Añadir, renombrar y eliminar parejas fácilmente
 - ✅ **Calendario automático**: Sistema round-robin (todos contra todos)
 - ✅ **Resultados al mejor de 3 sets**: Registro detallado por set; solo se aceptan sets reales de pádel (6-0 a 6-4, 7-5 o 7-6)
+- ✅ **Súper tie-break opcional**: Cada liga y cada torneo puede jugar el tercer set como súper tie-break (a 10 puntos, diferencia de 2). En la clasificación cuenta como un set y como un juego (1-0)
 - ✅ **Corrección de resultados**: Los resultados se pueden corregir o anular (en el torneo, mientras el ganador no haya jugado la ronda siguiente)
 - ✅ **Sistema de puntuación 3/1/0**: Victoria 3 pts, Derrota 2-1 → 1 pt, Derrota 2-0 → 0 pts
 - ✅ **Clasificación automática con desempates**: Puntos → enfrentamiento directo (empate entre dos) → diferencia de sets → diferencia de juegos → sets a favor
@@ -114,7 +115,8 @@ padel_app/
 |   ├──📄 0002_equipos_por_id.sql
 |   ├──📄 0003_login_intentos.sql
 |   ├──📄 0004_historial_torneos.sql
-|   └──📄 0005_ligas.sql
+|   ├──📄 0005_ligas.sql
+|   └──📄 0006_super_tiebreak.sql
 |
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
 ├──📁 .github/workflows/      # GitHub Actions: ejecuta los tests en cada push y PR
@@ -130,7 +132,7 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 
 | Tabla | Descripción |
 |-------|-------------|
-| `ligas` | Ligas disponibles (`slug`, nombre visible y orden) |
+| `ligas` | Ligas disponibles (`slug`, nombre visible, orden y si el tercer set es súper tie-break) |
 | `liga_equipos` | Equipos participantes en cada liga |
 | `liga_calendario` | Partidos y resultados de las ligas (`local_id`, `visitante_id`) |
 | `torneo` | Torneos: el actual (`configuracion` / `activo`) y los archivados en el historial |
@@ -149,9 +151,9 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 |------|--------|--------|:-----:|
 | `/api/login` | — | POST | — |
 | `/api/liga` | `getLigas`, `getEquipos`, `getCalendario` | GET | ❌ |
-| `/api/liga` | `crearLiga`, `renombrarLiga`, `eliminarLiga`, `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
+| `/api/liga` | `crearLiga`, `renombrarLiga`, `eliminarLiga`, `configurarLiga`, `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
 | `/api/torneo` | `getTorneo` (con `&id=` para un torneo del historial), `getHistorial` | GET | ❌ |
-| `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `resetTorneo` | POST | ✅ |
+| `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `configurarTorneo`, `resetTorneo` | POST | ✅ |
 
 La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo. `getEquipos` devuelve los equipos ya ordenados por clasificación. `resetTorneo` borra solo el torneo actual; el historial se conserva.
 
