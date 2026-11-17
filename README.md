@@ -22,13 +22,14 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **4 ligas simultáneas**: Masculino Avanzado, Masculino Intermedio, Masculino Iniciación y Femenino
 - ✅ **CRUD completo de equipos**: Añadir, renombrar y eliminar parejas fácilmente
 - ✅ **Calendario automático**: Sistema round-robin (todos contra todos)
-- ✅ **Resultados al mejor de 3 sets**: Registro detallado por set, validado en cliente y servidor
+- ✅ **Resultados al mejor de 3 sets**: Registro detallado por set; solo se aceptan sets reales de pádel (6-0 a 6-4, 7-5 o 7-6)
 - ✅ **Corrección de resultados**: Los resultados se pueden corregir o anular (en el torneo, mientras el ganador no haya jugado la ronda siguiente)
 - ✅ **Sistema de puntuación 3/1/0**: Victoria 3 pts, Derrota 2-1 → 1 pt, Derrota 2-0 → 0 pts
-- ✅ **Clasificación automática**: Ordenada por puntos con estadísticas
+- ✅ **Clasificación automática con desempates**: Puntos → enfrentamiento directo (empate entre dos) → diferencia de sets → diferencia de juegos → sets a favor
 - ✅ **Torneo eliminación directa**: Octavos → Cuartos → Semifinal → Final
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
+- ✅ **Historial de torneos**: Los torneos terminados se archivan con su campeón y subcampeón y se puede consultar su cuadro
 - ✅ **Login seguro**: Contraseña verificada en el servidor, token firmado con caducidad y límite de intentos
 - ✅ **Persistencia de datos**: Base de datos Cloudflare D1
 - ✅ **Diseño responsive**: Adaptado a móviles, tablets y ordenadores
@@ -105,9 +106,13 @@ padel_app/
 ├──📁 migrations/             # Migraciones de la base de datos D1 (se aplican en orden)
 |   ├──📄 0001_esquema_inicial.sql
 |   ├──📄 0002_equipos_por_id.sql
-|   └──📄 0003_login_intentos.sql
+|   ├──📄 0003_login_intentos.sql
+|   └──📄 0004_historial_torneos.sql
 |
-├──📄 wrangler.toml           # Configuración de Cloudflare
+├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
+├──📁 .github/workflows/      # GitHub Actions: ejecuta los tests en cada push y PR
+├──📄 package.json            # Script `npm test`
+├──📄 wrangler.toml           # Configuración de Cloudflare (producción y previews)
 └──📄 README.md               # Documentación
 ```
 <br>
@@ -120,7 +125,7 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 |-------|-------------|
 | `liga_equipos` | Equipos participantes en cada liga |
 | `liga_calendario` | Partidos y resultados de las ligas (`local_id`, `visitante_id`) |
-| `torneo` | Torneo actual y su estado |
+| `torneo` | Torneos: el actual (`configuracion` / `activo`) y los archivados en el historial |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas (`equipo1_id`, `equipo2_id`, `ganador_id`) |
 | `login_intentos` | Intentos fallidos de login por IP |
@@ -137,10 +142,10 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 | `/api/login` | — | POST | — |
 | `/api/liga` | `getEquipos`, `getCalendario` | GET | ❌ |
 | `/api/liga` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
-| `/api/torneo` | `getTorneo` | GET | ❌ |
-| `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `resetTorneo` | POST | ✅ |
+| `/api/torneo` | `getTorneo` (con `&id=` para un torneo del historial), `getHistorial` | GET | ❌ |
+| `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `resetTorneo` | POST | ✅ |
 
-La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo.
+La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo. `getEquipos` devuelve los equipos ya ordenados por clasificación. `resetTorneo` borra solo el torneo actual; el historial se conserva.
 
 Tras **5 intentos fallidos** de login en 15 minutos, la IP queda bloqueada 15 minutos (respuesta `429` con cabecera `Retry-After`).
 <br>
@@ -149,7 +154,7 @@ Tras **5 intentos fallidos** de login en 15 minutos, la IP queda bloqueada 15 mi
 
 ### Requisitos Previos
 
-- [Node.js](https://nodejs.org/) 18 o superior
+- [Node.js](https://nodejs.org/) 22.13 o superior
 - Una cuenta de [Cloudflare](https://dash.cloudflare.com/) (para desplegar)
 
 ### Desarrollo Local
@@ -172,6 +177,14 @@ npx wrangler pages dev
 
 > ⚠️ No subas `.dev.vars` al repositorio.
 
+### Tests
+
+```bash
+npm test
+```
+
+Prueban la API completa (login y límite de intentos, liga, desempates, torneo, historial), las migraciones (incluida la conversión de datos antiguos) y la validación de resultados del navegador. Usan SQLite en memoria, así que no necesitan Cloudflare ni instalar dependencias. GitHub Actions los ejecuta en cada push a `main` y en cada pull request.
+
 ### Despliegue en Cloudflare
 
 ```bash
@@ -191,7 +204,27 @@ npx wrangler pages deploy
 
 > ℹ️ La migración `0002` convierte los datos existentes (nombres → ids) sin perderlos. De paso recalcula los puntos de los partidos de liga ya jugados a partir de sus sets, fusiona equipos duplicados y vuelve a crear los equipos que se borraron teniendo partidos.
 
-También se puede desplegar conectando el repositorio de GitHub a Cloudflare Pages; en ese caso configura el binding D1 `DB` y la variable secreta `ADMIN_PASSWORD` desde el panel del proyecto.
+### Despliegue automático desde GitHub (configuración actual)
+
+El proyecto de Cloudflare Pages está conectado a este repositorio:
+
+| Rama | Despliegue | Base de datos D1 |
+|------|------------|------------------|
+| `main` | Producción | `padel-db` |
+| Cualquier otra | Vista previa (`<rama>.padel-app-401.pages.dev`) | `padel-db-preview` |
+
+Así, probar una rama nunca toca los datos reales. El secreto `ADMIN_PASSWORD` hay que configurarlo en los dos entornos (Production y Preview).
+
+**Cloudflare no aplica las migraciones automáticamente.** Cuando una rama añade una migración:
+
+```bash
+# Antes de probar la rama en su vista previa
+npx wrangler d1 migrations apply padel-db-preview --remote --env preview
+
+# Al fusionar en main (con copia de seguridad antes)
+npx wrangler d1 export padel-db --remote --output=backup.sql
+npx wrangler d1 migrations apply padel-db --remote
+```
 <br>
 
 ### 🔐 Seguridad

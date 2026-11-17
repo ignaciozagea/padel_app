@@ -5,7 +5,16 @@
     let equiposTorneo = [];   // [{ id, nombre }]
     let torneo = null;        // { rounds: [[match]] }
     let ganador = null;
+    let torneoInfo = null;    // fila de la tabla torneo (estado, nombre...)
+    let cuadroActualGenerado = false; // el torneo actual (no el del historial) ya tiene cuadro
+    let archivo = null;       // { id, nombre } si se está viendo un torneo del historial
+    let historial = [];       // torneos archivados
     let matchActual = null;
+
+    // Se puede editar el cuadro que se está viendo (no los torneos archivados)
+    function puedeEditarCuadro() {
+        return isAdmin && !archivo;
+    }
 
     // ==================== INICIALIZACIÓN ====================
     function init() {
@@ -35,25 +44,104 @@
 
     // ==================== CARGAR TORNEO DESDE BD ====================
     async function cargarTorneo() {
+        const url = archivo
+            ? `${API_URL}?action=getTorneo&id=${encodeURIComponent(archivo.id)}`
+            : `${API_URL}?action=getTorneo`;
         try {
-            const data = await apiFetch(`${API_URL}?action=getTorneo`);
+            const data = await apiFetch(url);
 
             if (data.success && data.data) {
-                equiposTorneo = data.data.equipos || [];
                 torneo = reconstruirTorneo(data.data.partidos);
                 ganador = data.data.torneo?.ganador || null;
+                torneoInfo = data.data.torneo || null;
+                if (!archivo) {
+                    equiposTorneo = data.data.equipos || [];
+                    cuadroActualGenerado = !!torneo;
+                }
             } else {
-                equiposTorneo = [];
                 torneo = null;
                 ganador = null;
+                torneoInfo = null;
+                if (!archivo) {
+                    equiposTorneo = [];
+                    cuadroActualGenerado = false;
+                }
             }
         } catch (error) {
             console.error('Error cargando torneo:', error);
-            equiposTorneo = [];
             torneo = null;
             ganador = null;
+            torneoInfo = null;
         }
         actualizarUI();
+        cargarHistorial();
+    }
+
+    // ==================== HISTORIAL ====================
+    async function cargarHistorial() {
+        const card = document.getElementById('historyCard');
+        const lista = document.getElementById('historyList');
+        try {
+            const data = await apiFetch(`${API_URL}?action=getHistorial`);
+            const torneos = data.success ? data.data : [];
+            if (torneos.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            card.style.display = 'block';
+            lista.innerHTML = torneos.map(t => {
+                const fecha = t.finalizado_en ? new Date(t.finalizado_en).toLocaleDateString('es-ES') : '';
+                return `
+                    <div class="history-item">
+                        <div>
+                            <div class="history-name">${escapeHtml(t.nombre || 'Torneo')}</div>
+                            <div class="history-meta">${escapeHtml(fecha)} · ${Number(t.num_equipos)} equipos</div>
+                            <div class="history-meta">🏆 ${escapeHtml(t.campeon || '-')} · 🥈 ${escapeHtml(t.subcampeon || '-')}</div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="verTorneoArchivado(${Number(t.id)})">👁️ Ver cuadro</button>
+                    </div>
+                `;
+            }).join('');
+            historial = torneos;
+        } catch (error) {
+            console.error('Error cargando historial:', error);
+            card.style.display = 'none';
+        }
+    }
+
+    async function verTorneoArchivado(id) {
+        const t = historial.find(x => x.id === id);
+        archivo = { id, nombre: t?.nombre || 'Torneo' };
+        await cargarTorneo();
+        document.getElementById('bracketCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function volverAlActual() {
+        archivo = null;
+        await cargarTorneo();
+    }
+
+    async function archivarTorneo() {
+        if (!puedeEditarCuadro()) return;
+        const porDefecto = `Torneo ${new Date().toLocaleDateString('es-ES')}`;
+        const entrada = prompt('Nombre para guardar este torneo en el historial:', porDefecto);
+        if (entrada === null) return;
+
+        try {
+            const data = await apiFetch(`${API_URL}?action=archivarTorneo`, {
+                method: 'POST',
+                body: { nombre: entrada.trim() || porDefecto }
+            });
+            if (data.success) {
+                await cargarTorneo();
+                alert(`✅ "${data.nombre}" guardado en el historial. Ya puedes inscribir equipos para un torneo nuevo.`);
+            } else {
+                alert('❌ Error al archivar: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión');
+        }
     }
 
     function contarSets(p, lado) {
@@ -105,6 +193,19 @@
         } else {
             document.getElementById('bracketCard').style.display = 'none';
         }
+
+        const banner = document.getElementById('archiveBanner');
+        if (archivo) {
+            banner.style.display = 'flex';
+            banner.innerHTML = `
+                <span>📚 Viendo el historial: <strong>${escapeHtml(archivo.nombre)}</strong></span>
+                <button class="btn btn-secondary btn-sm" onclick="volverAlActual()">↩️ Volver al torneo actual</button>
+            `;
+        } else {
+            banner.style.display = 'none';
+            banner.innerHTML = '';
+        }
+
         mostrarGanador();
         document.getElementById('teamCount').textContent = equiposTorneo.length;
     }
@@ -120,8 +221,8 @@
             alert('❌ Introduce el nombre de la pareja');
             return;
         }
-        if (torneo) {
-            alert('⚠️ El torneo ya está generado. Resetéalo para cambiar los equipos.');
+        if (cuadroActualGenerado) {
+            alert('⚠️ El torneo ya está generado. Archívalo (si ha terminado) o resetéalo para inscribir equipos nuevos.');
             return;
         }
         if (equiposTorneo.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
@@ -179,7 +280,7 @@
         }
 
         // Una vez generado el cuadro no se pueden quitar equipos (sí cambiarles el nombre)
-        const puedeEliminar = isAdmin && !torneo;
+        const puedeEliminar = isAdmin && !cuadroActualGenerado;
         container.innerHTML = equiposTorneo.map(equipo => `
             <div class="team-tag">
                 <span>🎾 ${escapeHtml(equipo.nombre)}</span>
@@ -222,7 +323,7 @@
             alert('⚠️ Necesitas al menos 2 equipos');
             return;
         }
-        if (torneo && !confirm('⚠️ Ya hay un cuadro generado. Si haces un nuevo sorteo se perderán los resultados. ¿Continuar?')) {
+        if (cuadroActualGenerado && !confirm('⚠️ Ya hay un cuadro generado. Si haces un nuevo sorteo se perderán los resultados. ¿Continuar?')) {
             return;
         }
 
@@ -231,6 +332,7 @@
             const data = await apiFetch(`${API_URL}?action=crearTorneo`, { method: 'POST', body: {} });
 
             if (data.success) {
+                archivo = null;
                 await cargarTorneo();
                 alert('✅ Torneo generado correctamente');
             } else {
@@ -275,10 +377,10 @@
 
         const tieneGanador = !!match.winnerId;
         const ambosPresentes = !!match.team1Id && !!match.team2Id;
-        const puedeJugar = ambosPresentes && !tieneGanador && isAdmin;
+        const puedeJugar = ambosPresentes && !tieneGanador && puedeEditarCuadro();
         // Un resultado se puede corregir mientras el ganador no haya jugado la ronda siguiente
         const siguiente = torneo.rounds[ronda + 1]?.[Math.floor(indice / 2)];
-        const puedeCorregir = isAdmin && tieneGanador && !!resultado && !siguiente?.played;
+        const puedeCorregir = puedeEditarCuadro() && tieneGanador && !!resultado && !siguiente?.played;
 
         const slot = (nombre, esGanador, sets) => `
             <div class="team-slot ${esGanador ? 'winner' : ''}">
@@ -431,17 +533,23 @@
             <h2>🏆 CAMPEÓN DEL TORNEO 🏆</h2>
             <h1 style="font-size: 2rem; margin-top: 0.5rem;">🎉 ${escapeHtml(ganador)} 🎉</h1>
             <p style="margin-top: 0.5rem;">¡Felicidades a los campeones!</p>
+            ${puedeEditarCuadro() && torneoInfo?.estado === 'activo' ? `
+                <button class="btn btn-primary" style="margin-top: 1rem;" onclick="archivarTorneo()">
+                    📦 Guardar en el historial y empezar un torneo nuevo
+                </button>
+            ` : ''}
         `;
     }
 
     async function resetearTorneo() {
         if (!isAdmin) return;
-        if (!confirm('⚠️ ¿Resetear todo el torneo? Se perderán todos los datos.')) return;
+        if (!confirm('⚠️ ¿Resetear el torneo actual? Se perderán sus equipos y resultados (el historial se conserva).')) return;
 
         try {
             const data = await apiFetch(`${API_URL}?action=resetTorneo`, { method: 'POST', body: {} });
 
             if (data.success) {
+                archivo = null;
                 await cargarTorneo();
                 alert('✅ Torneo reseteado correctamente');
             } else {
@@ -458,6 +566,9 @@
     window.renombrarEquipo = renombrarEquipo;
     window.abrirModalResultado = abrirModalResultado;
     window.cerrarModal = cerrarModal;
+    window.verTorneoArchivado = verTorneoArchivado;
+    window.volverAlActual = volverAlActual;
+    window.archivarTorneo = archivarTorneo;
 
     // Iniciar
     init();

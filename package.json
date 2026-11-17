@@ -1,0 +1,12 @@
+{
+  "name": "padel-app",
+  "private": true,
+  "type": "module",
+  "description": "Gestión de ligas y torneos de pádel (Cloudflare Pages + D1)",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

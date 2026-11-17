@@ -63,6 +63,13 @@ function leerNumero(id) {
     return valor === '' ? null : parseInt(valor, 10);
 }
 
+// Un set de pádel termina 6-0..6-4, 7-5 o 7-6 (tie-break)
+function setValido(a, b) {
+    const max = Math.max(a, b);
+    const min = Math.min(a, b);
+    return (max === 6 && min <= 4) || (max === 7 && (min === 5 || min === 6));
+}
+
 // Valida un resultado al mejor de 3 sets. sets = [[local, visitante], x3] (null si vacío)
 // Devuelve { error } o { setsLocal, setsVisitante, haySet3 }
 function validarResultado(sets) {
@@ -80,6 +87,12 @@ function validarResultado(sets) {
         return { error: '❌ Completa los dos valores del set 3' };
     }
     const haySet3 = sets[2][0] !== null;
+    for (let i = 0; i < (haySet3 ? 3 : 2); i++) {
+        const [a, b] = sets[i];
+        if (a !== b && !setValido(a, b)) {
+            return { error: `❌ El set ${i + 1} (${a}-${b}) no es válido: debe ser 6-0 a 6-4, 7-5 o 7-6` };
+        }
+    }
 
     let setsLocal = 0;
     let setsVisitante = 0;
