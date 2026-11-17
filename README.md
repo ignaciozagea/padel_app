@@ -19,7 +19,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 
 ### 🎯 Características Principales
 
-- ✅ **4 ligas simultáneas**: Masculino Avanzado, Masculino Intermedio, Masculino Iniciación y Femenino
+- ✅ **Ligas configurables**: Crea, renombra o elimina ligas desde la app (por defecto: Masculino Avanzado, Intermedio, Iniciación y Femenino). Cada liga tiene su enlace (`liga.html?liga=...`)
 - ✅ **CRUD completo de equipos**: Añadir, renombrar y eliminar parejas fácilmente
 - ✅ **Calendario automático**: Sistema round-robin (todos contra todos)
 - ✅ **Resultados al mejor de 3 sets**: Registro detallado por set; solo se aceptan sets reales de pádel (6-0 a 6-4, 7-5 o 7-6)
@@ -32,6 +32,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **Historial de torneos**: Los torneos terminados se archivan con su campeón y subcampeón y se puede consultar su cuadro
 - ✅ **Ficha de cada pareja**: Estadísticas, últimos resultados, partidos jugados y pendientes
 - ✅ **Compartir por WhatsApp**: Clasificación, jornadas, fichas de pareja y cuadro del torneo en texto listo para pegar (o copiar)
+- ✅ **App instalable (PWA)**: Se puede añadir a la pantalla de inicio del móvil y abre sin conexión con los últimos datos guardados
 - ✅ **Login seguro**: Contraseña verificada en el servidor, token firmado con caducidad y límite de intentos
 - ✅ **Persistencia de datos**: Base de datos Cloudflare D1
 - ✅ **Diseño responsive**: Adaptado a móviles, tablets y ordenadores
@@ -100,7 +101,9 @@ padel_app/
 |   |   ├──📄 index.css
 |   |   ├──📄 liga.css
 |   |   └──📄 torneo.css
-|   └──📁 img/                # Capturas de pantalla
+|   ├──📁 img/                # Capturas de pantalla e iconos de la app (img/icons/)
+|   ├──📄 manifest.webmanifest # Datos para instalar la web como app
+|   └──📄 sw.js               # Service worker: funcionamiento sin conexión
 |
 ├──📁 functions/
 |   └──📁 api/
@@ -110,7 +113,8 @@ padel_app/
 |   ├──📄 0001_esquema_inicial.sql
 |   ├──📄 0002_equipos_por_id.sql
 |   ├──📄 0003_login_intentos.sql
-|   └──📄 0004_historial_torneos.sql
+|   ├──📄 0004_historial_torneos.sql
+|   └──📄 0005_ligas.sql
 |
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
 ├──📁 .github/workflows/      # GitHub Actions: ejecuta los tests en cada push y PR
@@ -126,6 +130,7 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 
 | Tabla | Descripción |
 |-------|-------------|
+| `ligas` | Ligas disponibles (`slug`, nombre visible y orden) |
 | `liga_equipos` | Equipos participantes en cada liga |
 | `liga_calendario` | Partidos y resultados de las ligas (`local_id`, `visitante_id`) |
 | `torneo` | Torneos: el actual (`configuracion` / `activo`) y los archivados en el historial |
@@ -143,8 +148,8 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 | Ruta | Acción | Método | Admin |
 |------|--------|--------|:-----:|
 | `/api/login` | — | POST | — |
-| `/api/liga` | `getEquipos`, `getCalendario` | GET | ❌ |
-| `/api/liga` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
+| `/api/liga` | `getLigas`, `getEquipos`, `getCalendario` | GET | ❌ |
+| `/api/liga` | `crearLiga`, `renombrarLiga`, `eliminarLiga`, `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
 | `/api/torneo` | `getTorneo` (con `&id=` para un torneo del historial), `getHistorial` | GET | ❌ |
 | `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `resetTorneo` | POST | ✅ |
 

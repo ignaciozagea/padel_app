@@ -2,7 +2,8 @@
     const API_URL = '/api/liga';
 
     let isAdmin = false;
-    let currentLiga = 'masculino_avanzado';
+    let ligas = [];          // [{ slug, nombre, num_equipos }]
+    let currentLiga = null;  // slug de la liga seleccionada
     let equipos = [];        // ordenados por clasificación (lo calcula la API)
     let calendario = {};     // { jornada: [partido] }
     const editando = new Set(); // ids de partidos jugados cuyo resultado se está corrigiendo
@@ -10,11 +11,13 @@
     const url = action => `${API_URL}?action=${action}`;
 
     // ==================== INICIALIZACIÓN ====================
-    function init() {
+    async function init() {
         checkAdminAuth();
         configurarEventos();
-        cargarEquipos();
-        cargarCalendario();
+        await cargarLigas();
+        // La liga se puede indicar en la URL (?liga=femenino), p. ej. desde un enlace compartido
+        const pedida = new URLSearchParams(location.search).get('liga');
+        seleccionarLiga(ligas.some(l => l.slug === pedida) ? pedida : ligas[0]?.slug);
     }
 
     function checkAdminAuth() {
@@ -24,16 +27,10 @@
     }
 
     function configurarEventos() {
-        // Navegación de ligas
-        document.querySelectorAll('.liga-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.liga-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentLiga = btn.dataset.liga;
-                editando.clear();
-                cargarEquipos();
-                cargarCalendario();
-            });
+        // Navegación de ligas (los botones se crean en mostrarLigas)
+        document.getElementById('ligaNav').addEventListener('click', e => {
+            const btn = e.target.closest('.liga-btn');
+            if (btn) seleccionarLiga(btn.dataset.liga);
         });
 
         document.getElementById('shareStandingsBtn').addEventListener('click', compartirClasificacion);
@@ -45,15 +42,118 @@
             document.getElementById('teamName')?.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') agregarEquipo();
             });
+            document.getElementById('addLeagueBtn')?.addEventListener('click', crearLiga);
+            document.getElementById('leagueName')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') crearLiga();
+            });
         }
     }
 
-    function nombreLiga() {
-        return document.querySelector(`.liga-btn[data-liga="${currentLiga}"]`)?.textContent.trim() || currentLiga;
+    function nombreLiga(slug = currentLiga) {
+        return ligas.find(l => l.slug === slug)?.nombre || '';
     }
 
     async function recargar() {
+        if (!currentLiga) return;
         await Promise.all([cargarEquipos(), cargarCalendario()]);
+    }
+
+    // ==================== LIGAS ====================
+    async function cargarLigas() {
+        try {
+            const data = await apiFetch(url('getLigas'));
+            ligas = data.success ? data.data : [];
+        } catch (error) {
+            console.error('Error cargando ligas:', error);
+            ligas = [];
+        }
+        mostrarLigas();
+    }
+
+    function mostrarLigas() {
+        const nav = document.getElementById('ligaNav');
+        nav.innerHTML = ligas.length
+            ? ligas.map(l => `
+                <button class="liga-btn ${l.slug === currentLiga ? 'active' : ''}" data-liga="${escapeHtml(l.slug)}">
+                    ${escapeHtml(l.nombre)}
+                </button>`).join('')
+            : `<span class="info-text" style="padding: 0.5rem 1rem;">No hay ligas${isAdmin ? ': crea una en el panel de administración' : ''}</span>`;
+
+        const lista = document.getElementById('leaguesList');
+        if (!lista) return;
+        lista.innerHTML = ligas.map(l => `
+            <div class="team-tag">
+                <span>${escapeHtml(l.nombre)} <small style="color: #94a3b8;">(${Number(l.num_equipos)})</small></span>
+                <button class="edit-team" title="Cambiar nombre" onclick="renombrarLiga('${escapeHtml(l.slug)}')">✎</button>
+                <button class="remove-team" title="Eliminar" onclick="eliminarLiga('${escapeHtml(l.slug)}')">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function seleccionarLiga(slug) {
+        currentLiga = slug || null;
+        editando.clear();
+        document.querySelectorAll('.liga-btn').forEach(b => b.classList.toggle('active', b.dataset.liga === currentLiga));
+
+        // Mantener la liga en la URL para poder compartir el enlace
+        const direccion = new URL(location.href);
+        if (currentLiga) direccion.searchParams.set('liga', currentLiga);
+        else direccion.searchParams.delete('liga');
+        history.replaceState(null, '', direccion);
+
+        if (!currentLiga) {
+            equipos = [];
+            calendario = {};
+            mostrarEquipos();
+            mostrarClasificacion();
+            mostrarCalendario();
+            return;
+        }
+        recargar();
+    }
+
+    async function crearLiga() {
+        if (!isAdmin) return;
+        const input = document.getElementById('leagueName');
+        const nombre = input.value.trim();
+        if (!nombre) {
+            notificar('❌ Escribe el nombre de la liga', 'error');
+            return;
+        }
+        const data = await enviarAccion(url('crearLiga'), { nombre }, { ok: `✅ Liga "${nombre}" creada`, error: 'Error al crear la liga' });
+        if (data) {
+            input.value = '';
+            await cargarLigas();
+            seleccionarLiga(data.slug);
+        }
+    }
+
+    async function renombrarLiga(slug) {
+        if (!isAdmin) return;
+        const actual = nombreLiga(slug);
+        const nombre = await pedirTexto('Nuevo nombre de la liga (puede incluir un emoji):', actual, { titulo: '✎ Cambiar nombre de la liga' });
+        if (!nombre || nombre === actual) return;
+        if (await enviarAccion(url('renombrarLiga'), { slug, nombre }, { ok: '✅ Liga renombrada', error: 'Error al renombrar' })) {
+            await cargarLigas();
+        }
+    }
+
+    async function eliminarLiga(slug) {
+        if (!isAdmin) return;
+        const liga = ligas.find(l => l.slug === slug);
+        if (!liga) return;
+        const aviso = liga.num_equipos > 0
+            ? `\nSe borrarán también sus ${liga.num_equipos} parejas, el calendario y todos los resultados. No se puede deshacer.`
+            : '';
+        const seguro = await confirmar(`¿Eliminar la liga "${liga.nombre}"?${aviso}`, {
+            titulo: '🗑️ Eliminar liga', textoAceptar: 'Eliminar liga', peligro: true
+        });
+        if (!seguro) return;
+
+        if (await enviarAccion(url('eliminarLiga'), { slug }, { ok: `✅ Liga "${liga.nombre}" eliminada`, error: 'Error al eliminar' })) {
+            await cargarLigas();
+            if (currentLiga === slug) seleccionarLiga(ligas[0]?.slug);
+        }
     }
 
     // ==================== EQUIPOS ====================
@@ -130,7 +230,7 @@
         if (await enviarAccion(url('addEquipo'), { liga: currentLiga, nombre }, { ok: `✅ "${nombre}" añadida`, error: 'Error al añadir' })) {
             input.value = '';
             input.focus();
-            await cargarEquipos();
+            await Promise.all([cargarEquipos(), cargarLigas()]);
         }
     }
 
@@ -140,7 +240,7 @@
         if (!await confirmar(`¿Eliminar a "${equipo?.nombre}" de la liga?`, { titulo: 'Eliminar pareja', textoAceptar: 'Eliminar', peligro: true })) return;
 
         if (await enviarAccion(url('deleteEquipo'), { id }, { ok: '✅ Pareja eliminada', error: 'Error al eliminar' })) {
-            await recargar();
+            await Promise.all([recargar(), cargarLigas()]);
         }
     }
 
@@ -510,7 +610,7 @@
     }
 
     // ==================== COMPARTIR ====================
-    const enlaceLiga = () => `👉 ${location.origin}/liga.html`;
+    const enlaceLiga = () => `👉 ${location.origin}/liga.html?liga=${encodeURIComponent(currentLiga)}`;
 
     function compartirClasificacion() {
         if (equipos.length === 0) {
@@ -568,6 +668,8 @@
     window.anularResultado = anularResultado;
     window.verPareja = verPareja;
     window.compartirJornada = compartirJornada;
+    window.renombrarLiga = renombrarLiga;
+    window.eliminarLiga = eliminarLiga;
 
     // Iniciar
     init();

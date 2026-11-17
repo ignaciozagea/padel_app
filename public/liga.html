@@ -7,6 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/liga.css">
     <link rel="stylesheet" href="css/comun.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Pádel GO">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
@@ -28,12 +35,8 @@
     </div>
 
     <!-- Navegación de Ligas -->
-    <div class="liga-nav">
-        <button class="liga-btn active" data-liga="masculino_avanzado">👨 Masculino Avanzado</button>
-        <button class="liga-btn" data-liga="masculino_intermedio">👨 Masculino Intermedio</button>
-        <button class="liga-btn" data-liga="masculino_iniciacion">👨 Masculino Iniciación</button>
-        <button class="liga-btn" data-liga="femenino">👩 Femenino</button>
-    </div>
+    <!-- Se rellena con las ligas de la base de datos (js/liga.js) -->
+    <div class="liga-nav" id="ligaNav"></div>
 
     <!-- Panel de Administración -->
     <div id="adminPanel" style="display: none;">
@@ -54,6 +57,15 @@
                     <button class="btn btn-primary" id="generateCalendarBtn">🎲 Generar Calendario</button>
                     <button class="btn btn-danger" id="resetLigaBtn">🔄 Resetear Liga</button>
                 </div>
+            </div>
+
+            <div class="card">
+                <h2>🏷️ Ligas</h2>
+                <div class="form-group">
+                    <input type="text" id="leagueName" placeholder="Nueva liga (ej: 🧒 Infantil)" maxlength="60">
+                    <button class="btn btn-primary" id="addLeagueBtn">➕ Crear</button>
+                </div>
+                <div id="leaguesList" class="teams-list"></div>
             </div>
         </div>
     </div>

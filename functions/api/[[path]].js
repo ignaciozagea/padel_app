@@ -13,7 +13,6 @@ const API_HEADERS = {
     'X-Content-Type-Options': 'nosniff'
 };
 
-const LIGAS_VALIDAS = ['masculino_avanzado', 'masculino_intermedio', 'masculino_iniciacion', 'femenino'];
 const MAX_NOMBRE = 60;
 const TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
 
@@ -24,7 +23,8 @@ const LOGIN_BLOQUEO_MS = 15 * 60 * 1000;
 
 // Acciones que modifican datos: requieren token de administrador
 const ACCIONES_ADMIN = {
-    liga: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'generarCalendario',
+    liga: ['crearLiga', 'renombrarLiga', 'eliminarLiga',
+           'addEquipo', 'renameEquipo', 'deleteEquipo', 'generarCalendario',
            'guardarResultado', 'anularResultado', 'resetLiga'],
     torneo: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'crearTorneo',
              'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo']
@@ -191,9 +191,23 @@ function validarNombre(nombre) {
     return limpio;
 }
 
-function validarLiga(liga) {
-    if (!LIGAS_VALIDAS.includes(liga)) throw new HttpError(400, 'Liga no válida');
+// Comprueba que la liga existe en la tabla ligas y devuelve su slug
+async function validarLiga(db, liga) {
+    if (typeof liga !== 'string' || !liga) throw new HttpError(400, 'Falta la liga');
+    const existe = await db.prepare('SELECT 1 FROM ligas WHERE slug = ?').bind(liga).first();
+    if (!existe) throw new HttpError(404, 'Liga no encontrada');
     return liga;
+}
+
+// "👩 Femenino Avanzado" -> "femenino_avanzado"
+function slugDe(nombre) {
+    const base = nombre
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quitar tildes
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40);
+    return base || 'liga';
 }
 
 function leerJuegos(valor, numSet) {
@@ -358,9 +372,63 @@ function roundRobin(ids) {
 
 async function handleLiga(request, db, url, action) {
     switch (action) {
+        // ---------- Ligas ----------
+        case 'getLigas': {
+            const result = await db.prepare(`
+                SELECT l.slug, l.nombre, l.orden,
+                       (SELECT COUNT(*) FROM liga_equipos e WHERE e.liga_nombre = l.slug) AS num_equipos
+                FROM ligas l
+                ORDER BY l.orden, l.nombre
+            `).all();
+            return json({ success: true, data: result.results });
+        }
+
+        case 'crearLiga': {
+            const data = await leerJson(request);
+            const nombre = validarNombre(data.nombre);
+            const repetida = await db.prepare('SELECT 1 FROM ligas WHERE LOWER(nombre) = LOWER(?)').bind(nombre).first();
+            if (repetida) throw new HttpError(409, 'Ya existe una liga con ese nombre');
+
+            // Slug único a partir del nombre (femenino, femenino_2, ...)
+            const base = slugDe(nombre);
+            let slug = base;
+            for (let n = 2; await db.prepare('SELECT 1 FROM ligas WHERE slug = ?').bind(slug).first(); n++) {
+                slug = `${base}_${n}`;
+            }
+            await db.prepare(`
+                INSERT INTO ligas (slug, nombre, orden)
+                VALUES (?, ?, (SELECT COALESCE(MAX(orden), 0) + 1 FROM ligas))
+            `).bind(slug, nombre).run();
+            return json({ success: true, slug, nombre });
+        }
+
+        case 'renombrarLiga': {
+            const data = await leerJson(request);
+            const slug = await validarLiga(db, data.slug);
+            const nombre = validarNombre(data.nombre);
+            const repetida = await db.prepare('SELECT 1 FROM ligas WHERE LOWER(nombre) = LOWER(?) AND slug <> ?')
+                .bind(nombre, slug).first();
+            if (repetida) throw new HttpError(409, 'Ya existe una liga con ese nombre');
+            await db.prepare('UPDATE ligas SET nombre = ? WHERE slug = ?').bind(nombre, slug).run();
+            return json({ success: true });
+        }
+
+        case 'eliminarLiga': {
+            // Borra la liga con sus equipos y partidos
+            const data = await leerJson(request);
+            const slug = await validarLiga(db, data.slug);
+            await db.batch([
+                db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(slug),
+                db.prepare('DELETE FROM liga_equipos WHERE liga_nombre = ?').bind(slug),
+                db.prepare('DELETE FROM ligas WHERE slug = ?').bind(slug)
+            ]);
+            return json({ success: true });
+        }
+
+        // ---------- Equipos y partidos ----------
         case 'getEquipos': {
             // Devuelve los equipos ordenados por clasificación (calculada a partir de los partidos jugados)
-            const liga = validarLiga(url.searchParams.get('liga') || 'masculino_avanzado');
+            const liga = await validarLiga(db, url.searchParams.get('liga'));
             const [equipos, partidos] = await Promise.all([
                 db.prepare('SELECT id, nombre FROM liga_equipos WHERE liga_nombre = ?').bind(liga).all(),
                 db.prepare('SELECT * FROM liga_calendario WHERE liga_nombre = ? AND completado = 1').bind(liga).all()
@@ -370,7 +438,7 @@ async function handleLiga(request, db, url, action) {
 
         case 'addEquipo': {
             const data = await leerJson(request);
-            const liga = validarLiga(data.liga);
+            const liga = await validarLiga(db, data.liga);
             const nombre = validarNombre(data.nombre);
             await comprobarNombreLibreLiga(db, liga, nombre);
 
@@ -405,7 +473,7 @@ async function handleLiga(request, db, url, action) {
         }
 
         case 'getCalendario': {
-            const liga = validarLiga(url.searchParams.get('liga') || 'masculino_avanzado');
+            const liga = await validarLiga(db, url.searchParams.get('liga'));
             const result = await db.prepare(`
                 SELECT c.*, l.nombre AS local, v.nombre AS visitante
                 FROM liga_calendario c
@@ -425,7 +493,7 @@ async function handleLiga(request, db, url, action) {
         case 'generarCalendario': {
             // El calendario se genera en el servidor con los equipos inscritos
             const data = await leerJson(request);
-            const liga = validarLiga(data.liga);
+            const liga = await validarLiga(db, data.liga);
 
             const equiposRes = await db.prepare('SELECT id FROM liga_equipos WHERE liga_nombre = ?')
                 .bind(liga).all();
@@ -448,7 +516,7 @@ async function handleLiga(request, db, url, action) {
         case 'guardarResultado': {
             // Sirve tanto para registrar un resultado nuevo como para corregir uno existente
             const data = await leerJson(request);
-            const liga = validarLiga(data.liga);
+            const liga = await validarLiga(db, data.liga);
             const { sets, setsLocal, setsVisitante } = analizarSets(data);
 
             const partido = await db.prepare(
@@ -482,7 +550,7 @@ async function handleLiga(request, db, url, action) {
 
         case 'anularResultado': {
             const data = await leerJson(request);
-            const liga = validarLiga(data.liga);
+            const liga = await validarLiga(db, data.liga);
             const partido = await db.prepare(
                 'SELECT id FROM liga_calendario WHERE id = ? AND liga_nombre = ?'
             ).bind(data.id, liga).first();
@@ -502,7 +570,7 @@ async function handleLiga(request, db, url, action) {
 
         case 'resetLiga': {
             const data = await leerJson(request);
-            const liga = validarLiga(data.liga);
+            const liga = await validarLiga(db, data.liga);
             await db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(liga).run();
             return json({ success: true });
         }

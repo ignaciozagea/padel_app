@@ -28,6 +28,8 @@ function cerrarSesion() {
     window.location.href = 'index.html';
 }
 
+let avisoSinConexionMostrado = false;
+
 // fetch con JSON y token de administrador. Siempre devuelve un objeto { success, ... }
 // autenticar: false -> no envía el token ni trata un 401 como sesión caducada (login)
 async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
@@ -50,6 +52,12 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
         });
     } finally {
         if (conIndicador) indicarCarga(-1, bloquear);
+    }
+
+    // Sin conexión, el service worker devuelve la última copia guardada (ver /sw.js)
+    if (response.headers.get('X-Sin-Conexion') && !avisoSinConexionMostrado && typeof notificar === 'function') {
+        avisoSinConexionMostrado = true;
+        notificar('📴 Sin conexión: se muestran los últimos datos guardados', 'info');
     }
 
     let data;
