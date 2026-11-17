@@ -1,5 +1,3 @@
- const ADMIN_PASSWORD = 'admin123';
-
     function abrirModal() {
         document.getElementById('loginModal').classList.add('active');
         document.getElementById('adminPassword').value = '';
@@ -10,17 +8,31 @@
         document.getElementById('loginModal').classList.remove('active');
     }
 
-    function iniciarSesion() {
+    async function iniciarSesion() {
         const password = document.getElementById('adminPassword').value;
         const errorDiv = document.getElementById('loginError');
-        
-        if (password === ADMIN_PASSWORD) {
-            sessionStorage.setItem('adminAuth', 'true');
-            cerrarModal();
-            // Mostrar mensaje de éxito y redirigir
-            alert('✅ Acceso concedido. Ahora puedes gestionar ligas y torneos.');
-        } else {
-            errorDiv.textContent = '❌ Contraseña incorrecta';
+        const boton = document.getElementById('confirmLoginBtn');
+
+        if (!password) {
+            errorDiv.textContent = '❌ Introduce la contraseña';
+            return;
+        }
+
+        boton.disabled = true;
+        try {
+            const data = await apiFetch('/api/login', { method: 'POST', body: { password } });
+            if (data.success && data.token) {
+                guardarSesion(data.token);
+                cerrarModal();
+                alert('✅ Acceso concedido. Ahora puedes gestionar ligas y torneos.');
+            } else {
+                errorDiv.textContent = '❌ ' + (data.error || 'Contraseña incorrecta');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            errorDiv.textContent = '❌ Error de conexión con el servidor';
+        } finally {
+            boton.disabled = false;
         }
     }
 
