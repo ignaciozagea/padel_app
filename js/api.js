@@ -1,0 +1,102 @@
+// ==================== UTILIDADES COMPARTIDAS ====================
+// Sesión de administrador, llamadas a la API y validación de resultados.
+
+const AUTH_KEY = 'adminToken';
+
+// Devuelve el token si existe y no ha caducado (formato "<expiración>.<firma>")
+function getAdminToken() {
+    const token = sessionStorage.getItem(AUTH_KEY);
+    if (!token) return null;
+    const exp = Number(token.split('.')[0]);
+    if (!exp || exp < Date.now()) {
+        sessionStorage.removeItem(AUTH_KEY);
+        return null;
+    }
+    return token;
+}
+
+function esAdmin() {
+    return getAdminToken() !== null;
+}
+
+function guardarSesion(token) {
+    sessionStorage.setItem(AUTH_KEY, token);
+}
+
+function cerrarSesion() {
+    sessionStorage.removeItem(AUTH_KEY);
+    window.location.href = 'index.html';
+}
+
+// fetch con JSON y token de administrador. Siempre devuelve un objeto { success, ... }
+async function apiFetch(url, { method = 'GET', body } = {}) {
+    const headers = {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const token = getAdminToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(url, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        data = { success: false, error: `Respuesta no válida del servidor (${response.status})` };
+    }
+
+    if (response.status === 401 && token) {
+        sessionStorage.removeItem(AUTH_KEY);
+        alert('⚠️ Tu sesión ha caducado. Vuelve a iniciar sesión.');
+        window.location.href = 'index.html';
+    }
+    return data;
+}
+
+// Lee un input numérico: '' -> null
+function leerNumero(id) {
+    const valor = document.getElementById(id)?.value ?? '';
+    return valor === '' ? null : parseInt(valor, 10);
+}
+
+// Valida un resultado al mejor de 3 sets. sets = [[local, visitante], x3] (null si vacío)
+// Devuelve { error } o { setsLocal, setsVisitante, haySet3 }
+function validarResultado(sets) {
+    const fuera = v => v !== null && (!Number.isInteger(v) || v < 0 || v > 7);
+    for (let i = 0; i < 3; i++) {
+        if (fuera(sets[i][0]) || fuera(sets[i][1])) {
+            return { error: `❌ Valor no válido en el set ${i + 1} (entre 0 y 7)` };
+        }
+    }
+    for (let i = 0; i < 2; i++) {
+        if (sets[i][0] === null || sets[i][1] === null) return { error: `❌ Completa el set ${i + 1}` };
+        if (sets[i][0] === sets[i][1]) return { error: `❌ El set ${i + 1} no puede quedar empatado` };
+    }
+    if ((sets[2][0] === null) !== (sets[2][1] === null)) {
+        return { error: '❌ Completa los dos valores del set 3' };
+    }
+    const haySet3 = sets[2][0] !== null;
+
+    let setsLocal = 0;
+    let setsVisitante = 0;
+    for (let i = 0; i < 2; i++) sets[i][0] > sets[i][1] ? setsLocal++ : setsVisitante++;
+
+    if (setsLocal === 1) {
+        if (!haySet3) return { error: '❌ Con 1-1 en sets hay que indicar el resultado del set 3' };
+        if (sets[2][0] === sets[2][1]) return { error: '❌ El set 3 no puede quedar empatado' };
+        sets[2][0] > sets[2][1] ? setsLocal++ : setsVisitante++;
+    } else if (haySet3) {
+        return { error: '❌ No se juega set 3 si un equipo ha ganado los dos primeros' };
+    }
+    return { setsLocal, setsVisitante, haySet3 };
+}
+
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
