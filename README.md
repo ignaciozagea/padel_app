@@ -20,15 +20,16 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 ### 🎯 Características Principales
 
 - ✅ **4 ligas simultáneas**: Masculino Avanzado, Masculino Intermedio, Masculino Iniciación y Femenino
-- ✅ **CRUD completo de equipos**: Añadir y eliminar parejas fácilmente
+- ✅ **CRUD completo de equipos**: Añadir, renombrar y eliminar parejas fácilmente
 - ✅ **Calendario automático**: Sistema round-robin (todos contra todos)
 - ✅ **Resultados al mejor de 3 sets**: Registro detallado por set, validado en cliente y servidor
+- ✅ **Corrección de resultados**: Los resultados se pueden corregir o anular (en el torneo, mientras el ganador no haya jugado la ronda siguiente)
 - ✅ **Sistema de puntuación 3/1/0**: Victoria 3 pts, Derrota 2-1 → 1 pt, Derrota 2-0 → 0 pts
 - ✅ **Clasificación automática**: Ordenada por puntos con estadísticas
 - ✅ **Torneo eliminación directa**: Octavos → Cuartos → Semifinal → Final
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
-- ✅ **Login seguro**: Contraseña verificada en el servidor y token firmado con caducidad
+- ✅ **Login seguro**: Contraseña verificada en el servidor, token firmado con caducidad y límite de intentos
 - ✅ **Persistencia de datos**: Base de datos Cloudflare D1
 - ✅ **Diseño responsive**: Adaptado a móviles, tablets y ordenadores
 - ✅ **Glassmorphism moderno**: Efectos visuales atractivos
@@ -101,7 +102,11 @@ padel_app/
 |       └──📄 [[path]].js     # API: /api/login, /api/liga, /api/torneo
 |
 ├──📁 img/                    # Capturas de pantalla
-├──📄 schema.sql              # Esquema de la base de datos D1
+├──📁 migrations/             # Migraciones de la base de datos D1 (se aplican en orden)
+|   ├──📄 0001_esquema_inicial.sql
+|   ├──📄 0002_equipos_por_id.sql
+|   └──📄 0003_login_intentos.sql
+|
 ├──📄 wrangler.toml           # Configuración de Cloudflare
 └──📄 README.md               # Documentación
 ```
@@ -109,16 +114,18 @@ padel_app/
 
 ## 🗄️ Base de Datos
 
-El esquema completo está en [`schema.sql`](schema.sql).
+El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrations/). Los partidos referencian a los equipos por **id**, así que una pareja se puede renombrar sin perder sus resultados.
 
 | Tabla | Descripción |
 |-------|-------------|
 | `liga_equipos` | Equipos participantes en cada liga |
-| `liga_calendario` | Partidos y resultados de las ligas |
-| `liga_clasificacion` | Estadísticas y puntos de cada equipo por liga |
-| `torneo` | Cabecera del torneo actual |
+| `liga_calendario` | Partidos y resultados de las ligas (`local_id`, `visitante_id`) |
+| `torneo` | Torneo actual y su estado |
 | `torneo_equipos` | Equipos inscritos en el torneo |
-| `torneo_partidos` | Partidos del torneo por rondas |
+| `torneo_partidos` | Partidos del torneo por rondas (`equipo1_id`, `equipo2_id`, `ganador_id`) |
+| `login_intentos` | Intentos fallidos de login por IP |
+
+La clasificación de la liga y el campeón del torneo no se guardan: se calculan a partir de los resultados, por lo que siempre son coherentes al corregir o anular un partido.
 <br>
 
 ## 🔌 API
@@ -129,11 +136,13 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 |------|--------|--------|:-----:|
 | `/api/login` | — | POST | — |
 | `/api/liga` | `getEquipos`, `getCalendario` | GET | ❌ |
-| `/api/liga` | `addEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `resetLiga` | POST | ✅ |
+| `/api/liga` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
 | `/api/torneo` | `getTorneo` | GET | ❌ |
-| `/api/torneo` | `addEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `resetTorneo` | POST | ✅ |
+| `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `resetTorneo` | POST | ✅ |
 
-La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`.
+La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo.
+
+Tras **5 intentos fallidos** de login en 15 minutos, la IP queda bloqueada 15 minutos (respuesta `429` con cabecera `Retry-After`).
 <br>
 
 ## 🛠️ Instalación y Configuración
@@ -151,7 +160,7 @@ git clone https://github.com/ignaciozagea/padel_app.git
 cd padel_app
 
 # 2. Crear las tablas en la base de datos local
-npx wrangler d1 execute padel-db --local --file=./schema.sql
+npx wrangler d1 migrations apply padel-db --local
 
 # 3. Definir la contraseña de administrador para desarrollo
 echo "ADMIN_PASSWORD=tu_contraseña" > .dev.vars
@@ -169,8 +178,9 @@ npx wrangler pages dev
 # 1. Crear la base de datos (solo la primera vez) y poner su id en wrangler.toml
 npx wrangler d1 create padel-db
 
-# 2. Crear las tablas en producción
-npx wrangler d1 execute padel-db --remote --file=./schema.sql
+# 2. Hacer una copia de seguridad y aplicar las migraciones pendientes
+npx wrangler d1 export padel-db --remote --output=backup.sql
+npx wrangler d1 migrations apply padel-db --remote
 
 # 3. Configurar la contraseña de administrador como secreto
 npx wrangler pages secret put ADMIN_PASSWORD
@@ -179,12 +189,15 @@ npx wrangler pages secret put ADMIN_PASSWORD
 npx wrangler pages deploy
 ```
 
+> ℹ️ La migración `0002` convierte los datos existentes (nombres → ids) sin perderlos. De paso recalcula los puntos de los partidos de liga ya jugados a partir de sus sets, fusiona equipos duplicados y vuelve a crear los equipos que se borraron teniendo partidos.
+
 También se puede desplegar conectando el repositorio de GitHub a Cloudflare Pages; en ese caso configura el binding D1 `DB` y la variable secreta `ADMIN_PASSWORD` desde el panel del proyecto.
 <br>
 
 ### 🔐 Seguridad
 - ✅ **Autenticación en el servidor**: la contraseña se guarda como secreto de Cloudflare (`ADMIN_PASSWORD`), nunca en el código
 - ✅ **Token firmado (HMAC-SHA256)**: caduca a las 8 horas; se guarda en `sessionStorage`
+- ✅ **Límite de intentos**: 5 fallos de login en 15 minutos bloquean la IP durante 15 minutos
 - ✅ **Acciones protegidas**: toda modificación de datos exige token válido y método POST
 - ✅ **Validación**: nombres, ligas y resultados se validan en el servidor
 - ✅ **Prepared Statements**: protección contra SQL injection

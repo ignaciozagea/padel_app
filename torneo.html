@@ -52,7 +52,7 @@
 <!-- Modal de Resultados con 3 sets -->
 <div id="resultModal" class="modal">
     <div class="modal-content">
-        <h3>🎾 Registrar Resultado del Partido</h3>
+        <h3 id="modalTitle">🎾 Registrar Resultado del Partido</h3>
         <div class="modal-teams" id="modalTeams"></div>
         
         <div class="sets-container">
@@ -86,6 +86,7 @@
         
         <div class="form-group" style="justify-content: center; margin-top: 1rem;">
             <button class="btn btn-success" id="confirmResultBtn">✅ Confirmar Resultado</button>
+            <button class="btn btn-danger" id="annulResultBtn" style="display: none;">🗑️ Anular Resultado</button>
             <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
         </div>
     </div>

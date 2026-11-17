@@ -29,6 +29,7 @@
                 if (e.key === 'Enter') agregarEquipo();
             });
             document.getElementById('confirmResultBtn').addEventListener('click', confirmarResultado);
+            document.getElementById('annulResultBtn').addEventListener('click', anularResultado);
         }
     }
 
@@ -76,6 +77,9 @@
                 if (!porRonda.has(p.ronda)) porRonda.set(p.ronda, []);
                 porRonda.get(p.ronda).push({
                     dbId: p.id,
+                    team1Id: p.equipo1_id,
+                    team2Id: p.equipo2_id,
+                    winnerId: p.ganador_id,
                     team1: p.equipo1,
                     team2: p.equipo2,
                     winner: p.ganador,
@@ -174,14 +178,41 @@
             return;
         }
 
-        // Una vez generado el cuadro no se pueden quitar equipos
+        // Una vez generado el cuadro no se pueden quitar equipos (sí cambiarles el nombre)
         const puedeEliminar = isAdmin && !torneo;
         container.innerHTML = equiposTorneo.map(equipo => `
             <div class="team-tag">
                 <span>🎾 ${escapeHtml(equipo.nombre)}</span>
-                ${puedeEliminar ? `<button class="remove-team" onclick="eliminarEquipo(${Number(equipo.id)})">✕</button>` : ''}
+                ${isAdmin ? `<button class="edit-team" title="Cambiar nombre" onclick="renombrarEquipo(${Number(equipo.id)})">✎</button>` : ''}
+                ${puedeEliminar ? `<button class="remove-team" title="Eliminar" onclick="eliminarEquipo(${Number(equipo.id)})">✕</button>` : ''}
             </div>
         `).join('');
+    }
+
+    async function renombrarEquipo(id) {
+        if (!isAdmin) return;
+        const equipo = equiposTorneo.find(e => e.id === id);
+        if (!equipo) return;
+
+        const entrada = prompt('Nuevo nombre de la pareja:', equipo.nombre);
+        if (entrada === null) return;
+        const nombre = entrada.trim();
+        if (!nombre || nombre === equipo.nombre) return;
+
+        try {
+            const data = await apiFetch(`${API_URL}?action=renameEquipo`, {
+                method: 'POST',
+                body: { id, nombre }
+            });
+            if (data.success) {
+                await cargarTorneo();
+            } else {
+                alert('❌ Error al renombrar: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión');
+        }
     }
 
     // ==================== GENERAR TORNEO ====================
@@ -242,9 +273,12 @@
         const team2Display = match.team2 || (esBye2 ? '🔵 DESCANSO' : '?');
         const resultado = match.resultado;
 
-        const tieneGanador = !!match.winner;
-        const ambosPresentes = !!match.team1 && !!match.team2;
+        const tieneGanador = !!match.winnerId;
+        const ambosPresentes = !!match.team1Id && !!match.team2Id;
         const puedeJugar = ambosPresentes && !tieneGanador && isAdmin;
+        // Un resultado se puede corregir mientras el ganador no haya jugado la ronda siguiente
+        const siguiente = torneo.rounds[ronda + 1]?.[Math.floor(indice / 2)];
+        const puedeCorregir = isAdmin && tieneGanador && !!resultado && !siguiente?.played;
 
         const slot = (nombre, esGanador, sets) => `
             <div class="team-slot ${esGanador ? 'winner' : ''}">
@@ -254,8 +288,8 @@
 
         let html = `<div class="match">
             <div class="match-teams">
-                ${slot(team1Display, tieneGanador && match.winner === match.team1, resultado?.setsGanadosLocal ?? 0)}
-                ${slot(team2Display, tieneGanador && match.winner === match.team2, resultado?.setsGanadosVisitante ?? 0)}
+                ${slot(team1Display, tieneGanador && match.winnerId === match.team1Id, resultado?.setsGanadosLocal ?? 0)}
+                ${slot(team2Display, tieneGanador && match.winnerId === match.team2Id, resultado?.setsGanadosVisitante ?? 0)}
             </div>`;
 
         if (tieneGanador && resultado) {
@@ -263,6 +297,9 @@
             if (resultado.set3) resultadoStr += `, ${resultado.set3.local}-${resultado.set3.visitante}`;
             html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#10b981;">✅ ${resultadoStr}</div>`;
             html += `<div style="text-align:center; font-size:0.7rem;">🏆 Avanza: ${escapeHtml(match.winner)}</div>`;
+            if (puedeCorregir) {
+                html += `<button class="btn-edit-match" onclick="abrirModalResultado(${ronda}, ${indice})">✏️ Corregir resultado</button>`;
+            }
         } else if (tieneGanador && (esBye1 || esBye2)) {
             html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#f59e0b;">🔄 ${escapeHtml(match.winner)} avanza automáticamente por descanso</div>`;
         } else if (tieneGanador) {
@@ -282,22 +319,49 @@
     // ==================== MODAL DE RESULTADOS ====================
     function abrirModalResultado(ronda, indice) {
         const match = torneo?.rounds[ronda]?.[indice];
-        if (!match || !match.team1 || !match.team2) return;
+        if (!match || !match.team1Id || !match.team2Id) return;
 
-        matchActual = { id: match.dbId, equipo1: match.team1, equipo2: match.team2 };
+        const r = match.resultado; // si existe, se está corrigiendo
+        matchActual = { id: match.dbId, equipo1: match.team1, equipo2: match.team2, correccion: !!r };
 
+        document.getElementById('modalTitle').textContent =
+            r ? '✏️ Corregir Resultado del Partido' : '🎾 Registrar Resultado del Partido';
         document.getElementById('modalTeams').innerHTML = `
             <strong>${escapeHtml(match.team1)}</strong> vs <strong>${escapeHtml(match.team2)}</strong>
         `;
 
-        document.getElementById('modal_set1_local').value = 0;
-        document.getElementById('modal_set1_visit').value = 0;
-        document.getElementById('modal_set2_local').value = 0;
-        document.getElementById('modal_set2_visit').value = 0;
-        document.getElementById('modal_set3_local').value = '';
-        document.getElementById('modal_set3_visit').value = '';
+        document.getElementById('modal_set1_local').value = r ? r.set1.local : 0;
+        document.getElementById('modal_set1_visit').value = r ? r.set1.visitante : 0;
+        document.getElementById('modal_set2_local').value = r ? r.set2.local : 0;
+        document.getElementById('modal_set2_visit').value = r ? r.set2.visitante : 0;
+        document.getElementById('modal_set3_local').value = r?.set3 ? r.set3.local : '';
+        document.getElementById('modal_set3_visit').value = r?.set3 ? r.set3.visitante : '';
+        document.getElementById('annulResultBtn').style.display = r ? '' : 'none';
 
         document.getElementById('resultModal').classList.add('active');
+    }
+
+    async function anularResultado() {
+        if (!matchActual) return;
+        const partido = matchActual;
+        if (!confirm(`¿Anular el resultado de ${partido.equipo1} vs ${partido.equipo2}? El partido volverá a quedar pendiente.`)) return;
+
+        try {
+            const data = await apiFetch(`${API_URL}?action=anularPartido`, {
+                method: 'POST',
+                body: { id: partido.id }
+            });
+            if (data.success) {
+                cerrarModal();
+                await cargarTorneo();
+                alert('✅ Resultado anulado');
+            } else {
+                alert('❌ Error al anular: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión');
+        }
     }
 
     function cerrarModal() {
@@ -336,7 +400,9 @@
                 cerrarModal();
                 await cargarTorneo();
 
-                let resumen = `✅ Partido registrado correctamente!\n\n`;
+                let resumen = partido.correccion
+                    ? `✅ Resultado corregido!\n\n`
+                    : `✅ Partido registrado correctamente!\n\n`;
                 resumen += `${partido.equipo1} ${data.setsLocal} - ${data.setsVisitante} ${partido.equipo2}\n`;
                 resumen += `📊 ${sets[0][0]}-${sets[0][1]}, ${sets[1][0]}-${sets[1][1]}`;
                 if (validacion.haySet3) resumen += `, ${sets[2][0]}-${sets[2][1]}`;
@@ -389,6 +455,7 @@
 
     // ==================== UTILIDADES ====================
     window.eliminarEquipo = eliminarEquipo;
+    window.renombrarEquipo = renombrarEquipo;
     window.abrirModalResultado = abrirModalResultado;
     window.cerrarModal = cerrarModal;
 

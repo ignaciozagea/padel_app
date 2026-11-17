@@ -20,7 +20,7 @@
 
         boton.disabled = true;
         try {
-            const data = await apiFetch('/api/login', { method: 'POST', body: { password } });
+            const data = await apiFetch('/api/login', { method: 'POST', body: { password }, autenticar: false });
             if (data.success && data.token) {
                 guardarSesion(data.token);
                 cerrarModal();

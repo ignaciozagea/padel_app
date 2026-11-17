@@ -5,6 +5,7 @@
     let currentLiga = 'masculino_avanzado';
     let equipos = [];
     let calendario = {};
+    const editando = new Set(); // ids de partidos jugados cuyo resultado se está corrigiendo
 
     // ==================== INICIALIZACIÓN ====================
     function init() {
@@ -27,6 +28,7 @@
                 document.querySelectorAll('.liga-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentLiga = btn.dataset.liga;
+                editando.clear();
                 cargarEquipos();
                 cargarCalendario();
             });
@@ -75,9 +77,39 @@
         container.innerHTML = equipos.map(equipo => `
             <div class="team-tag">
                 <span>🎾 ${escapeHtml(equipo.nombre)}</span>
-                ${isAdmin ? `<button class="remove-team" onclick="eliminarEquipo(${Number(equipo.id)})">✕</button>` : ''}
+                ${isAdmin ? `
+                    <button class="edit-team" title="Cambiar nombre" onclick="renombrarEquipo(${Number(equipo.id)})">✎</button>
+                    <button class="remove-team" title="Eliminar" onclick="eliminarEquipo(${Number(equipo.id)})">✕</button>
+                ` : ''}
             </div>
         `).join('');
+    }
+
+    async function renombrarEquipo(id) {
+        if (!isAdmin) return;
+        const equipo = equipos.find(e => e.id === id);
+        if (!equipo) return;
+
+        const entrada = prompt('Nuevo nombre de la pareja:', equipo.nombre);
+        if (entrada === null) return;
+        const nombre = entrada.trim();
+        if (!nombre || nombre === equipo.nombre) return;
+
+        try {
+            const data = await apiFetch(`${API_URL}?action=renameEquipo`, {
+                method: 'POST',
+                body: { id, nombre }
+            });
+            if (data.success) {
+                await cargarEquipos();
+                await cargarCalendario();
+            } else {
+                alert('❌ Error al renombrar: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión');
+        }
     }
 
     async function agregarEquipo() {
@@ -190,7 +222,9 @@
     }
 
     function mostrarPartido(partido, jornada, idx) {
-        if (partido.completado) {
+        const enEdicion = editando.has(partido.id);
+
+        if (partido.completado && !enEdicion) {
             let setsInfo = `${partido.set1_local}-${partido.set1_visitante}, ${partido.set2_local}-${partido.set2_visitante}`;
             if (partido.set3_local !== null && partido.set3_visitante !== null) {
                 setsInfo += `, ${partido.set3_local}-${partido.set3_visitante}`;
@@ -203,6 +237,12 @@
                         <span>🎾 Resultado: ${setsInfo}</span>
                         <span class="resultado-badge">🏆 ${partido.puntos_local} - ${partido.puntos_visitante} pts</span>
                     </div>
+                    ${isAdmin ? `
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary btn-sm" onclick="editarResultado(${jornada}, ${idx})">✏️ Corregir</button>
+                            <button class="btn btn-danger btn-sm" onclick="anularResultado(${jornada}, ${idx})">🗑️ Anular</button>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -216,13 +256,15 @@
             `;
         }
 
+        // Al corregir, el formulario se rellena con el resultado guardado
+        const valor = v => (enEdicion && v !== null && v !== undefined) ? `value="${Number(v)}"` : '';
         const setInput = (n, opcional) => `
             <div class="set-card">
                 <label>🎾 SET ${n}${opcional ? ' (opcional)' : ''}</label>
                 <div class="set-inputs">
-                    <input type="number" id="set${n}_local_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;">
+                    <input type="number" id="set${n}_local_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;" ${valor(partido[`set${n}_local`])}>
                     <span>-</span>
-                    <input type="number" id="set${n}_visit_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;">
+                    <input type="number" id="set${n}_visit_${jornada}_${idx}" placeholder="${opcional ? '' : '0'}" min="0" max="7" step="1" style="width:55px;" ${valor(partido[`set${n}_visitante`])}>
                 </div>
             </div>
         `;
@@ -237,8 +279,9 @@
                 </div>
                 <div class="action-buttons">
                     <button class="btn btn-success btn-sm" onclick="guardarResultado(${jornada}, ${idx})">
-                        💾 Guardar Resultado
+                        💾 ${enEdicion ? 'Guardar Corrección' : 'Guardar Resultado'}
                     </button>
+                    ${enEdicion ? `<button class="btn btn-secondary btn-sm" onclick="cancelarEdicion(${jornada}, ${idx})">Cancelar</button>` : ''}
                 </div>
             </div>
         `;
@@ -272,11 +315,50 @@
             });
 
             if (data.success) {
+                const eraCorreccion = editando.delete(partido.id);
                 await cargarEquipos();
                 await cargarCalendario();
-                alert('✅ Resultado guardado correctamente');
+                alert(eraCorreccion ? '✅ Resultado corregido' : '✅ Resultado guardado correctamente');
             } else {
                 alert('❌ Error al guardar: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión');
+        }
+    }
+
+    function editarResultado(jornada, idx) {
+        const partido = calendario[jornada]?.[idx];
+        if (!isAdmin || !partido) return;
+        editando.add(partido.id);
+        mostrarCalendario();
+    }
+
+    function cancelarEdicion(jornada, idx) {
+        const partido = calendario[jornada]?.[idx];
+        if (!partido) return;
+        editando.delete(partido.id);
+        mostrarCalendario();
+    }
+
+    async function anularResultado(jornada, idx) {
+        const partido = calendario[jornada]?.[idx];
+        if (!isAdmin || !partido) return;
+        if (!confirm(`¿Anular el resultado de ${partido.local} vs ${partido.visitante}? El partido volverá a quedar pendiente.`)) return;
+
+        try {
+            const data = await apiFetch(`${API_URL}?action=anularResultado`, {
+                method: 'POST',
+                body: { liga: currentLiga, id: partido.id }
+            });
+            if (data.success) {
+                editando.delete(partido.id);
+                await cargarEquipos();
+                await cargarCalendario();
+                alert('✅ Resultado anulado');
+            } else {
+                alert('❌ Error al anular: ' + (data.error || 'Error desconocido'));
             }
         } catch (error) {
             console.error('Error:', error);
@@ -296,33 +378,15 @@
             return;
         }
 
-        // Round-robin (método del círculo)
-        const teams = equipos.map(e => e.nombre);
-        if (teams.length % 2 !== 0) teams.push(null); // null = descansa
-
-        const totalTeams = teams.length;
-        const calendar = [];
-
-        for (let jornada = 0; jornada < totalTeams - 1; jornada++) {
-            const jornadaPartidos = [];
-            for (let i = 0; i < totalTeams / 2; i++) {
-                const local = teams[i];
-                const visitante = teams[totalTeams - 1 - i];
-                if (local && visitante) jornadaPartidos.push({ local, visitante });
-            }
-            calendar.push(jornadaPartidos);
-
-            const last = teams.pop();
-            teams.splice(1, 0, last);
-        }
-
         try {
+            // El calendario (todos contra todos) se genera en el servidor
             const data = await apiFetch(`${API_URL}?action=generarCalendario`, {
                 method: 'POST',
-                body: { liga: currentLiga, calendario: calendar }
+                body: { liga: currentLiga }
             });
 
             if (data.success) {
+                editando.clear();
                 await cargarEquipos();
                 await cargarCalendario();
                 const statusDiv = document.getElementById('calendarStatus');
@@ -403,7 +467,11 @@
     };
 
     window.eliminarEquipo = eliminarEquipo;
+    window.renombrarEquipo = renombrarEquipo;
     window.guardarResultado = guardarResultado;
+    window.editarResultado = editarResultado;
+    window.cancelarEdicion = cancelarEdicion;
+    window.anularResultado = anularResultado;
 
     // Iniciar
     init();
