@@ -73,7 +73,12 @@ export function crearApp() {
             method, headers, body: body !== undefined ? JSON.stringify(body) : undefined
         });
         const res = await onRequest({ request, env });
-        return { status: res.status, retryAfter: res.headers.get('Retry-After'), ...(await res.json()) };
+        return {
+            status: res.status,
+            retryAfter: res.headers.get('Retry-After'),
+            cabeceras: Object.fromEntries(res.headers),
+            ...(await res.json())
+        };
     }
 
     return {

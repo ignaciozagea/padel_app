@@ -30,6 +30,8 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
 - ✅ **Historial de torneos**: Los torneos terminados se archivan con su campeón y subcampeón y se puede consultar su cuadro
+- ✅ **Ficha de cada pareja**: Estadísticas, últimos resultados, partidos jugados y pendientes
+- ✅ **Compartir por WhatsApp**: Clasificación, jornadas, fichas de pareja y cuadro del torneo en texto listo para pegar (o copiar)
 - ✅ **Login seguro**: Contraseña verificada en el servidor, token firmado con caducidad y límite de intentos
 - ✅ **Persistencia de datos**: Base de datos Cloudflare D1
 - ✅ **Diseño responsive**: Adaptado a móviles, tablets y ordenadores
@@ -52,15 +54,15 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
   
 | Página Principal | Liga |
 |:---:|:---:|
-| ![Página Principal](./img/index.png) | ![Liga](./img/liga.png) |
+| ![Página Principal](./public/img/index.png) | ![Liga](./public/img/liga.png) |
 
 | Torneo | Calendario |
 |:---:|:---:|
-| ![Torneo](./img/torneo.png) | ![Calendario](./img/calendario.png) |
+| ![Torneo](./public/img/torneo.png) | ![Calendario](./public/img/calendario.png) |
 
 | Gestión de Liga | Gestión de torneos |
 |:---:|:---:|
-| ![Gestión liga](./img/gestion_liga.png) | ![Gestión torneos](./img/gestion_torneo.png) |
+| ![Gestión liga](./public/img/gestion_liga.png) | ![Gestión torneos](./public/img/gestion_torneo.png) |
 
 </div>
 <br>
@@ -83,26 +85,27 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 ```text
 padel_app/
 |
-├──📄 index.html              # Página principal (login + navegación)
-├──📄 liga.html               # Gestión de ligas
-├──📄 torneo.html             # Gestión de torneos
-|
-├──📁 js/
-|   ├──📄 api.js              # Sesión, llamadas a la API y validación (compartido)
-|   ├──📄 index.js
-|   ├──📄 liga.js
-|   └──📄 torneo.js
-|
-├──📁 css/
-|   ├──📄 index.css
-|   ├──📄 liga.css
-|   └──📄 torneo.css
+├──📁 public/                 # Lo único que se publica como web estática
+|   ├──📄 index.html          # Página principal (login + navegación)
+|   ├──📄 liga.html           # Gestión de ligas
+|   ├──📄 torneo.html         # Gestión de torneos
+|   ├──📁 js/
+|   |   ├──📄 api.js          # Sesión, llamadas a la API y validación (compartido)
+|   |   ├──📄 ui.js           # Avisos, ventanas, carga y compartir (compartido)
+|   |   ├──📄 index.js
+|   |   ├──📄 liga.js
+|   |   └──📄 torneo.js
+|   ├──📁 css/
+|   |   ├──📄 comun.css       # Estilos de los componentes compartidos
+|   |   ├──📄 index.css
+|   |   ├──📄 liga.css
+|   |   └──📄 torneo.css
+|   └──📁 img/                # Capturas de pantalla
 |
 ├──📁 functions/
 |   └──📁 api/
 |       └──📄 [[path]].js     # API: /api/login, /api/liga, /api/torneo
 |
-├──📁 img/                    # Capturas de pantalla
 ├──📁 migrations/             # Migraciones de la base de datos D1 (se aplican en orden)
 |   ├──📄 0001_esquema_inicial.sql
 |   ├──📄 0002_equipos_por_id.sql
@@ -235,6 +238,8 @@ npx wrangler d1 migrations apply padel-db --remote
 - ✅ **Validación**: nombres, ligas y resultados se validan en el servidor
 - ✅ **Prepared Statements**: protección contra SQL injection
 - ✅ **Escapado de HTML**: protección frente a XSS en nombres de equipos
+- ✅ **Sin CORS**: la API solo acepta llamadas desde la propia web
+- ✅ **Solo se publica `public/`**: el código de la API, las migraciones y los tests no son descargables
 <br>
 
 ## 👤 Autor

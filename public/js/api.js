@@ -36,11 +36,21 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
     const token = autenticar ? getAdminToken() : null;
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(url, {
-        method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined
-    });
+    // Indicador de carga (js/ui.js); las peticiones que guardan cambios bloquean los botones
+    const conIndicador = typeof indicarCarga === 'function';
+    const bloquear = method !== 'GET';
+    if (conIndicador) indicarCarga(+1, bloquear);
+
+    let response;
+    try {
+        response = await fetch(url, {
+            method,
+            headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined
+        });
+    } finally {
+        if (conIndicador) indicarCarga(-1, bloquear);
+    }
 
     let data;
     try {
@@ -51,10 +61,28 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
 
     if (response.status === 401 && token) {
         sessionStorage.removeItem(AUTH_KEY);
-        alert('⚠️ Tu sesión ha caducado. Vuelve a iniciar sesión.');
-        window.location.href = 'index.html';
+        if (typeof notificar === 'function') notificar('⚠️ Tu sesión ha caducado. Vuelve a iniciar sesión.', 'error');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+        return { success: false, error: 'Tu sesión ha caducado', sesionCaducada: true };
     }
     return data;
+}
+
+// Envía una acción de administrador (POST) y avisa del resultado (js/ui.js).
+// Devuelve la respuesta si ha ido bien, o null si ha fallado.
+async function enviarAccion(url, body, { ok, error = 'Error' } = {}) {
+    try {
+        const data = await apiFetch(url, { method: 'POST', body });
+        if (data.success) {
+            if (ok) notificar(ok);
+            return data;
+        }
+        if (!data.sesionCaducada) notificar(`❌ ${error}: ${data.error || 'Error desconocido'}`, 'error');
+    } catch (e) {
+        console.error('Error:', e);
+        notificar('❌ Error de conexión con el servidor', 'error');
+    }
+    return null;
 }
 
 // Lee un input numérico: '' -> null

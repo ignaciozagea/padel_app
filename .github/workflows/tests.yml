@@ -19,7 +19,7 @@ jobs:
           node-version: 24
 
       - name: Comprobar sintaxis del frontend
-        run: for f in js/*.js; do node --check "$f"; done
+        run: for f in public/js/*.js; do node --check "$f"; done
 
       - name: Ejecutar tests (API, migraciones y validación)
         run: npm test
