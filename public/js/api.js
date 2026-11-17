@@ -38,18 +38,25 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
     const token = autenticar ? getAdminToken() : null;
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    // Indicador de carga (js/ui.js); las peticiones que guardan cambios bloquean los botones
+    // Indicador de carga (js/ui.js); las peticiones que guardan cambios bloquean los botones.
+    // La petición se da por terminada cuando ya se ha leído la respuesta (no solo al llegar).
     const conIndicador = typeof indicarCarga === 'function';
     const bloquear = method !== 'GET';
     if (conIndicador) indicarCarga(+1, bloquear);
 
     let response;
+    let data;
     try {
         response = await fetch(url, {
             method,
             headers,
             body: body !== undefined ? JSON.stringify(body) : undefined
         });
+        try {
+            data = await response.json();
+        } catch {
+            data = { success: false, error: `Respuesta no válida del servidor (${response.status})` };
+        }
     } finally {
         if (conIndicador) indicarCarga(-1, bloquear);
     }
@@ -58,13 +65,6 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
     if (response.headers.get('X-Sin-Conexion') && !avisoSinConexionMostrado && typeof notificar === 'function') {
         avisoSinConexionMostrado = true;
         notificar('📴 Sin conexión: se muestran los últimos datos guardados', 'info');
-    }
-
-    let data;
-    try {
-        data = await response.json();
-    } catch {
-        data = { success: false, error: `Respuesta no válida del servidor (${response.status})` };
     }
 
     if (response.status === 401 && token) {
@@ -77,12 +77,17 @@ async function apiFetch(url, { method = 'GET', body, autenticar = true } = {}) {
 }
 
 // Envía una acción de administrador (POST) y avisa del resultado (js/ui.js).
+// El aviso de éxito se muestra cuando terminan también las recargas que haga quien llama
+// (p. ej. volver a pedir la lista), así coincide con lo que se ve en pantalla.
 // Devuelve la respuesta si ha ido bien, o null si ha fallado.
 async function enviarAccion(url, body, { ok, error = 'Error' } = {}) {
     try {
         const data = await apiFetch(url, { method: 'POST', body });
         if (data.success) {
-            if (ok) notificar(ok);
+            if (ok) {
+                if (typeof cuandoTermineLaCarga === 'function') cuandoTermineLaCarga().then(() => notificar(ok));
+                else notificar(ok);
+            }
             return data;
         }
         if (!data.sesionCaducada) notificar(`❌ ${error}: ${data.error || 'Error desconocido'}`, 'error');

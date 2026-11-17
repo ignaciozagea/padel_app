@@ -54,17 +54,25 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 
 <div align="center">
   
-| Página Principal | Liga |
+| Página principal | Clasificación con desempates |
 |:---:|:---:|
-| ![Página Principal](./public/img/index.png) | ![Liga](./public/img/liga.png) |
+| ![Página principal](./docs/capturas/index.png) | ![Clasificación](./docs/capturas/liga.png) |
 
-| Torneo | Calendario |
+| Calendario | Ficha de pareja |
 |:---:|:---:|
-| ![Torneo](./public/img/torneo.png) | ![Calendario](./public/img/calendario.png) |
+| ![Calendario](./docs/capturas/calendario.png) | ![Ficha de pareja](./docs/capturas/ficha_pareja.png) |
 
-| Gestión de Liga | Gestión de torneos |
+| Compartir por WhatsApp | Cuadro del torneo |
 |:---:|:---:|
-| ![Gestión liga](./public/img/gestion_liga.png) | ![Gestión torneos](./public/img/gestion_torneo.png) |
+| ![Compartir](./docs/capturas/compartir.png) | ![Torneo](./docs/capturas/torneo.png) |
+
+| Historial de torneos | Gestión de la liga (admin) |
+|:---:|:---:|
+| ![Historial](./docs/capturas/historial.png) | ![Gestión de la liga](./docs/capturas/gestion_liga.png) |
+
+| Gestión del torneo (admin) | Móvil |
+|:---:|:---:|
+| ![Gestión del torneo](./docs/capturas/gestion_torneo.png) | <img src="./docs/capturas/movil.png" alt="Móvil" width="260"> |
 
 </div>
 <br>
@@ -102,7 +110,7 @@ padel_app/
 |   |   ├──📄 index.css
 |   |   ├──📄 liga.css
 |   |   └──📄 torneo.css
-|   ├──📁 img/                # Capturas de pantalla e iconos de la app (img/icons/)
+|   ├──📁 img/icons/          # Iconos de la app (PWA)
 |   ├──📄 manifest.webmanifest # Datos para instalar la web como app
 |   └──📄 sw.js               # Service worker: funcionamiento sin conexión
 |
@@ -118,6 +126,7 @@ padel_app/
 |   ├──📄 0005_ligas.sql
 |   └──📄 0006_super_tiebreak.sql
 |
+├──📁 docs/capturas/          # Capturas de pantalla del README (no se publican)
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
 ├──📁 .github/workflows/      # GitHub Actions: ejecuta los tests en cada push y PR
 ├──📄 package.json            # Script `npm test`

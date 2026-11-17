@@ -140,8 +140,8 @@
 
         const data = await enviarAccion(url('archivarTorneo'), { nombre: nombre || porDefecto }, { error: 'Error al archivar' });
         if (data) {
-            notificar(`✅ "${data.nombre}" guardado en el historial.\nYa puedes inscribir parejas para un torneo nuevo.`);
             await cargarTorneo();
+            notificar(`✅ "${data.nombre}" guardado en el historial.\nYa puedes inscribir parejas para un torneo nuevo.`);
         }
     }
 
@@ -478,12 +478,12 @@
             cerrarModal();
             let detalle = `${sets[0][0]}-${sets[0][1]}, ${sets[1][0]}-${sets[1][1]}`;
             if (validacion.haySet3) detalle += `, ${sets[2][0]}-${sets[2][1]}`;
+            await cargarTorneo();
             notificar(
                 `✅ ${partido.correccion ? 'Resultado corregido' : 'Partido registrado'}\n` +
                 `${partido.equipo1} ${data.setsLocal}-${data.setsVisitante} ${partido.equipo2} (${detalle})\n` +
                 `🏆 Avanza: ${data.ganador}`
             );
-            await cargarTorneo();
         }
     }
 
