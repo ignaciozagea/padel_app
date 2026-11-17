@@ -127,15 +127,15 @@ async function pedirTexto(mensaje, valorInicial = '', { titulo = 'Introduce un v
 }
 
 // ---------- Indicador de carga ----------
-// Barra fina arriba mientras hay peticiones en curso. Mientras se guardan cambios (bloquear = true)
-// los botones quedan desactivados para evitar dobles envíos.
+// Barra fina arriba mientras hay peticiones en curso. Al guardar cambios (bloquear = true) los botones
+// quedan desactivados hasta que terminan también las recargas que provoca el guardado, para que no se
+// pueda pulsar nada con la pantalla aún sin actualizar (ni enviar dos veces).
 let peticionesEnCurso = 0;
 let peticionesBloqueantes = 0;
+let bloqueoHastaInactividad = false;
+let esperandoInactividad = [];
 
-function indicarCarga(delta, bloquear = false) {
-    peticionesEnCurso = Math.max(0, peticionesEnCurso + delta);
-    if (bloquear) peticionesBloqueantes = Math.max(0, peticionesBloqueantes + delta);
-
+function pintarCarga() {
     let barra = document.getElementById('ui-barra-carga');
     if (!barra) {
         barra = document.createElement('div');
@@ -144,8 +144,37 @@ function indicarCarga(delta, bloquear = false) {
         document.body.appendChild(barra);
     }
     barra.classList.toggle('activa', peticionesEnCurso > 0);
-    document.body.classList.toggle('ui-ocupado', peticionesBloqueantes > 0);
+    document.body.classList.toggle('ui-ocupado', peticionesBloqueantes > 0 || bloqueoHastaInactividad);
     document.body.setAttribute('aria-busy', peticionesEnCurso > 0 ? 'true' : 'false');
+}
+
+function indicarCarga(delta, bloquear = false) {
+    peticionesEnCurso = Math.max(0, peticionesEnCurso + delta);
+    if (bloquear) {
+        peticionesBloqueantes = Math.max(0, peticionesBloqueantes + delta);
+        if (delta < 0 && peticionesBloqueantes === 0) bloqueoHastaInactividad = true;
+    }
+    pintarCarga();
+    if (peticionesEnCurso === 0) setTimeout(comprobarInactividad, 0);
+}
+
+// Se ejecuta en una tarea posterior: si el código que esperaba la respuesta ha lanzado otra
+// petición (p. ej. recargar la lista), todavía no se considera terminado
+function comprobarInactividad() {
+    if (peticionesEnCurso > 0) return;
+    bloqueoHastaInactividad = false;
+    pintarCarga();
+    const pendientes = esperandoInactividad;
+    esperandoInactividad = [];
+    pendientes.forEach(resolver => resolver());
+}
+
+// Promesa que se cumple cuando no queda ninguna petición en curso (incluidas las recargas)
+function cuandoTermineLaCarga() {
+    return new Promise(resolver => {
+        esperandoInactividad.push(resolver);
+        if (peticionesEnCurso === 0) setTimeout(comprobarInactividad, 0);
+    });
 }
 
 // ---------- Compartir (WhatsApp, copiar, menú del sistema) ----------

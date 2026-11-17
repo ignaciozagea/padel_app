@@ -402,12 +402,21 @@
         }
 
         @media (max-width: 640px) {
+            /* En el móvil la tabla cabe entera: se ocultan PP1 y PP0 (están en la ficha de cada pareja)
+               para que siempre se vean los puntos sin desplazar la tabla */
             .standings-table {
-                min-width: 480px;
-                font-size: 0.7rem;
+                min-width: 0;
+                font-size: 0.75rem;
+            }
+            .standings-table th:nth-child(5), .standings-table td:nth-child(5),
+            .standings-table th:nth-child(6), .standings-table td:nth-child(6) {
+                display: none;
+            }
+            .standings-table td:nth-child(2) {
+                white-space: normal;
             }
             .standings-table th,
             .standings-table td {
-                padding: 0.4rem 0.2rem;
+                padding: 0.45rem 0.2rem;
             }
         }
