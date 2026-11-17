@@ -46,6 +46,10 @@
             </div>
             <div id="teamsList" class="teams-list"></div>
             <div class="info-text">Equipos inscritos: <span id="teamCount">0</span> | Recomendado: 4, 8, 16 equipos</div>
+            <label class="ui-opcion">
+                <input type="checkbox" id="superTiebreakTorneo">
+                <span>🎾 Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
+            </label>
         </div>
     </div>
 
@@ -91,7 +95,7 @@
                 </div>
             </div>
             <div class="set-card">
-                <label>🎾 SET 3 (opcional)</label>
+                <label id="modalSet3Label">🎾 SET 3 (opcional)</label>
                 <div class="set-inputs">
                     <input type="number" id="modal_set3_local" placeholder="-" min="0" max="7" step="1">
                     <span>-</span>

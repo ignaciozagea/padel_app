@@ -9,6 +9,7 @@
     let cuadroActualGenerado = false; // el torneo actual (no el del historial) ya tiene cuadro
     let archivo = null;       // { id, nombre } si se está viendo un torneo del historial
     let historial = [];       // torneos archivados
+    let superTiebreak = false; // el torneo actual juega el tercer set como súper tie-break
     let matchActual = null;
 
     const url = action => `${API_URL}?action=${action}`;
@@ -43,6 +44,7 @@
             });
             document.getElementById('confirmResultBtn').addEventListener('click', confirmarResultado);
             document.getElementById('annulResultBtn').addEventListener('click', anularResultado);
+            document.getElementById('superTiebreakTorneo').addEventListener('change', cambiarSuperTiebreak);
         }
     }
 
@@ -61,6 +63,7 @@
                 if (!archivo) {
                     equiposTorneo = data.data.equipos || [];
                     cuadroActualGenerado = !!torneo;
+                    superTiebreak = !!data.data.torneo?.super_tiebreak;
                 }
             } else {
                 torneo = null;
@@ -69,6 +72,7 @@
                 if (!archivo) {
                     equiposTorneo = [];
                     cuadroActualGenerado = false;
+                    superTiebreak = false;
                 }
             }
         } catch (error) {
@@ -204,7 +208,30 @@
         }
 
         mostrarGanador();
+        mostrarOpcionesTorneo();
         document.getElementById('teamCount').textContent = equiposTorneo.length;
+    }
+
+    // ==================== OPCIONES DEL TORNEO ====================
+    function mostrarOpcionesTorneo() {
+        const casilla = document.getElementById('superTiebreakTorneo');
+        if (!casilla) return;
+        casilla.checked = superTiebreak;
+    }
+
+    async function cambiarSuperTiebreak(e) {
+        const activar = e.target.checked;
+        const ok = await enviarAccion(url('configurarTorneo'), { super_tiebreak: activar }, {
+            ok: activar
+                ? '✅ En este torneo el tercer set será un súper tie-break'
+                : '✅ En este torneo el tercer set vuelve a ser un set normal',
+            error: 'Error al cambiar la opción'
+        });
+        if (!ok) {
+            e.target.checked = !activar;  // deshacer el cambio visual
+            return;
+        }
+        superTiebreak = activar;
     }
 
     // ==================== GESTIÓN DE EQUIPOS ====================
@@ -398,6 +425,11 @@
         document.getElementById('modal_set3_visit').value = r?.set3 ? r.set3.visitante : '';
         document.getElementById('annulResultBtn').style.display = r ? '' : 'none';
 
+        // Tercer set: normal o súper tie-break según la opción del torneo
+        const stb = superTiebreak;
+        document.getElementById('modalSet3Label').textContent = stb ? '🎾 SÚPER TIE-BREAK (si 1-1, a 10)' : '🎾 SET 3 (opcional)';
+        for (const id of ['modal_set3_local', 'modal_set3_visit']) document.getElementById(id).max = stb ? 30 : 7;
+
         document.getElementById('resultModal').classList.add('active');
     }
 
@@ -429,7 +461,7 @@
             leerNumero(`modal_set${n}_local`),
             leerNumero(`modal_set${n}_visit`)
         ]);
-        const validacion = validarResultado(sets);
+        const validacion = validarResultado(sets, { superTiebreak });
         if (validacion.error) {
             notificar(validacion.error, 'error');
             return;

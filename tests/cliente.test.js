@@ -36,3 +36,16 @@ test('rechaza resultados no válidos', () => {
         assert.ok(validar(sets).error, `debería rechazar ${JSON.stringify(sets)}`);
     }
 });
+
+test('súper tie-break en el tercer set (misma regla que el servidor)', () => {
+    const stb = sets => ctx.validarResultado(sets.concat([[null, null]]).slice(0, 3), { superTiebreak: true });
+    assert.deepEqual({ ...stb([[6, 4], [3, 6], [10, 8]]) }, { setsLocal: 2, setsVisitante: 1, haySet3: true });
+    assert.deepEqual({ ...stb([[6, 4], [3, 6], [9, 11]]) }, { setsLocal: 1, setsVisitante: 2, haySet3: true });
+    for (const s3 of [[10, 9], [9, 7], [13, 10], [7, 5], [31, 29], [10, 10]]) {
+        assert.ok(stb([[6, 4], [3, 6], s3]).error, `debería rechazar ${s3}`);
+    }
+    // Los dos primeros sets siguen siendo sets normales
+    assert.ok(stb([[10, 8], [6, 3]]).error);
+    // Sin la opción, 10-8 en el tercer set no vale
+    assert.ok(validar([[6, 4], [3, 6], [10, 8]]).error);
+});

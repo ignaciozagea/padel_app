@@ -25,9 +25,9 @@ const LOGIN_BLOQUEO_MS = 15 * 60 * 1000;
 const ACCIONES_ADMIN = {
     liga: ['crearLiga', 'renombrarLiga', 'eliminarLiga',
            'addEquipo', 'renameEquipo', 'deleteEquipo', 'generarCalendario',
-           'guardarResultado', 'anularResultado', 'resetLiga'],
+           'guardarResultado', 'anularResultado', 'resetLiga', 'configurarLiga'],
     torneo: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'crearTorneo',
-             'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo']
+             'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo', 'configurarTorneo']
 };
 
 class HttpError extends Error {
@@ -210,11 +210,13 @@ function slugDe(nombre) {
     return base || 'liga';
 }
 
-function leerJuegos(valor, numSet) {
+const MAX_PUNTOS_SUPER_TIEBREAK = 30;
+
+function leerJuegos(valor, numSet, maximo = 7) {
     if (valor === null || valor === undefined || valor === '') return null;
     const n = Number(valor);
-    if (!Number.isInteger(n) || n < 0 || n > 7) {
-        throw new HttpError(400, `Valor no válido en el set ${numSet} (debe ser un número entre 0 y 7)`);
+    if (!Number.isInteger(n) || n < 0 || n > maximo) {
+        throw new HttpError(400, `Valor no válido en el set ${numSet} (debe ser un número entre 0 y ${maximo})`);
     }
     return n;
 }
@@ -226,12 +228,29 @@ function setValido(a, b) {
     return (max === 6 && min <= 4) || (max === 7 && (min === 5 || min === 6));
 }
 
-// Valida un resultado al mejor de 3 sets y devuelve los sets normalizados
-function analizarSets(data) {
-    const sets = [1, 2, 3].map(i => ({
-        local: leerJuegos(data[`set${i}_local`], i),
-        visitante: leerJuegos(data[`set${i}_visitante`], i)
-    }));
+// Súper tie-break: a 10 puntos con 2 de diferencia (10-0..10-8, 11-9, 12-10...)
+function superTiebreakValido(a, b) {
+    const max = Math.max(a, b);
+    const min = Math.min(a, b);
+    return (max === 10 && min <= 8) || (max > 10 && max - min === 2);
+}
+
+// Un tercer set guardado es un súper tie-break si alguien llegó a 10 o más
+// (un set normal nunca pasa de 7), aunque la opción se haya cambiado después
+function esSuperTiebreak(a, b) {
+    return a !== null && a !== undefined && b !== null && b !== undefined && Math.max(a, b) >= 10;
+}
+
+// Valida un resultado al mejor de 3 sets y devuelve los sets normalizados.
+// superTiebreak: el tercer set se juega como súper tie-break
+function analizarSets(data, { superTiebreak = false } = {}) {
+    const sets = [1, 2, 3].map(i => {
+        const maximo = i === 3 && superTiebreak ? MAX_PUNTOS_SUPER_TIEBREAK : 7;
+        return {
+            local: leerJuegos(data[`set${i}_local`], i, maximo),
+            visitante: leerJuegos(data[`set${i}_visitante`], i, maximo)
+        };
+    });
 
     for (let i = 0; i < 2; i++) {
         if (sets[i].local === null || sets[i].visitante === null) {
@@ -247,7 +266,11 @@ function analizarSets(data) {
     const jugados = haySet3 ? sets : sets.slice(0, 2);
     jugados.forEach((s, i) => {
         if (s.local === s.visitante) throw new HttpError(400, `El set ${i + 1} no puede quedar empatado`);
-        if (!setValido(s.local, s.visitante)) {
+        if (i === 2 && superTiebreak) {
+            if (!superTiebreakValido(s.local, s.visitante)) {
+                throw new HttpError(400, `El súper tie-break (${s.local}-${s.visitante}) no es válido: se gana a 10 puntos con 2 de diferencia (10-8, 11-9, 12-10...)`);
+            }
+        } else if (!setValido(s.local, s.visitante)) {
             throw new HttpError(400, `El set ${i + 1} (${s.local}-${s.visitante}) no es un resultado válido: debe ser 6-0 a 6-4, 7-5 o 7-6`);
         }
         if (i < 2) s.local > s.visitante ? setsLocal++ : setsVisitante++;
@@ -322,7 +345,12 @@ function calcularClasificacion(equipos, partidos) {
             const a = p[`set${n}_local`];
             const b = p[`set${n}_visitante`];
             if (a === null || a === undefined || b === null || b === undefined) continue;
-            jl += a; jv += b;
+            if (n === 3 && esSuperTiebreak(a, b)) {
+                // El súper tie-break cuenta como un juego (1-0), no por sus puntos
+                if (a > b) jl++; else jv++;
+            } else {
+                jl += a; jv += b;
+            }
             if (a > b) sl++; else sv++;
         }
         sumar(local, p.puntos_local, sl, sv, jl, jv);
@@ -375,7 +403,7 @@ async function handleLiga(request, db, url, action) {
         // ---------- Ligas ----------
         case 'getLigas': {
             const result = await db.prepare(`
-                SELECT l.slug, l.nombre, l.orden,
+                SELECT l.slug, l.nombre, l.orden, l.super_tiebreak,
                        (SELECT COUNT(*) FROM liga_equipos e WHERE e.liga_nombre = l.slug) AS num_equipos
                 FROM ligas l
                 ORDER BY l.orden, l.nombre
@@ -400,6 +428,16 @@ async function handleLiga(request, db, url, action) {
                 VALUES (?, ?, (SELECT COALESCE(MAX(orden), 0) + 1 FROM ligas))
             `).bind(slug, nombre).run();
             return json({ success: true, slug, nombre });
+        }
+
+        case 'configurarLiga': {
+            // Opciones de la liga: por ahora, si el tercer set es un súper tie-break
+            const data = await leerJson(request);
+            const slug = await validarLiga(db, data.slug);
+            if (typeof data.super_tiebreak !== 'boolean') throw new HttpError(400, 'Opción no válida');
+            await db.prepare('UPDATE ligas SET super_tiebreak = ? WHERE slug = ?')
+                .bind(data.super_tiebreak ? 1 : 0, slug).run();
+            return json({ success: true });
         }
 
         case 'renombrarLiga': {
@@ -517,7 +555,8 @@ async function handleLiga(request, db, url, action) {
             // Sirve tanto para registrar un resultado nuevo como para corregir uno existente
             const data = await leerJson(request);
             const liga = await validarLiga(db, data.liga);
-            const { sets, setsLocal, setsVisitante } = analizarSets(data);
+            const { super_tiebreak } = await db.prepare('SELECT super_tiebreak FROM ligas WHERE slug = ?').bind(liga).first();
+            const { sets, setsLocal, setsVisitante } = analizarSets(data, { superTiebreak: !!super_tiebreak });
 
             const partido = await db.prepare(
                 'SELECT id FROM liga_calendario WHERE id = ? AND liga_nombre = ?'
@@ -644,7 +683,7 @@ async function comprobarNombreLibreTorneo(db, torneoId, nombre, exceptoId = 0) {
 // Partido del torneo activo + el partido de la ronda siguiente al que llega su ganador
 async function obtenerPartidoTorneo(db, id) {
     const torneo = await db.prepare(
-        "SELECT id FROM torneo WHERE estado = 'activo' ORDER BY id DESC LIMIT 1"
+        "SELECT id, super_tiebreak FROM torneo WHERE estado = 'activo' ORDER BY id DESC LIMIT 1"
     ).first();
     if (!torneo) throw new HttpError(400, 'No hay torneo activo');
 
@@ -662,7 +701,7 @@ async function obtenerPartidoTorneo(db, id) {
         throw new HttpError(409, 'No se puede modificar: el ganador ya ha jugado el partido de la ronda siguiente');
     }
     const campoSiguiente = partido.orden % 2 === 0 ? 'equipo1_id' : 'equipo2_id';
-    return { partido, siguiente, campoSiguiente };
+    return { torneo, partido, siguiente, campoSiguiente };
 }
 
 async function handleTorneo(request, db, url, action) {
@@ -688,6 +727,21 @@ async function handleTorneo(request, db, url, action) {
                 success: true,
                 data: { torneo: { ...torneo, ganador: campeonDe(partidos) }, equipos: equipos.results, partidos }
             });
+        }
+
+        case 'configurarTorneo': {
+            // Opciones del torneo actual (se crea en configuración si todavía no existe)
+            const data = await leerJson(request);
+            if (typeof data.super_tiebreak !== 'boolean') throw new HttpError(400, 'Opción no válida');
+            let torneo = await obtenerTorneoActual(db);
+            if (!torneo) {
+                torneo = await db.prepare(
+                    "INSERT INTO torneo (estado, super_tiebreak) VALUES ('configuracion', COALESCE((SELECT super_tiebreak FROM torneo ORDER BY id DESC LIMIT 1), 0)) RETURNING id"
+                ).first();
+            }
+            await db.prepare('UPDATE torneo SET super_tiebreak = ? WHERE id = ?')
+                .bind(data.super_tiebreak ? 1 : 0, torneo.id).run();
+            return json({ success: true });
         }
 
         case 'getHistorial': {
@@ -733,7 +787,7 @@ async function handleTorneo(request, db, url, action) {
             let torneo = await obtenerTorneoActual(db);
             if (!torneo) {
                 torneo = await db.prepare(
-                    "INSERT INTO torneo (estado) VALUES ('configuracion') RETURNING id"
+                    "INSERT INTO torneo (estado, super_tiebreak) VALUES ('configuracion', COALESCE((SELECT super_tiebreak FROM torneo ORDER BY id DESC LIMIT 1), 0)) RETURNING id"
                 ).first();
             } else if (await torneoTienePartidos(db, torneo.id)) {
                 throw new HttpError(409, 'El torneo ya está generado. Resetéalo para cambiar los equipos.');
@@ -830,8 +884,8 @@ async function handleTorneo(request, db, url, action) {
         case 'guardarPartido': {
             // Registra un resultado nuevo o corrige uno existente (si el ganador aún no ha jugado la ronda siguiente)
             const data = await leerJson(request);
-            const { partido, siguiente, campoSiguiente } = await obtenerPartidoTorneo(db, data.id);
-            const { sets, setsLocal, setsVisitante } = analizarSets(data);
+            const { torneo, partido, siguiente, campoSiguiente } = await obtenerPartidoTorneo(db, data.id);
+            const { sets, setsLocal, setsVisitante } = analizarSets(data, { superTiebreak: !!torneo.super_tiebreak });
             const ganadorId = setsLocal > setsVisitante ? partido.equipo1_id : partido.equipo2_id;
 
             const batch = [
