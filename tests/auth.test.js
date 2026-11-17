@@ -2,6 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { crearApp, PASSWORD } from './helpers/d1.js';
 
+test('la API no permite llamadas desde otros dominios (sin CORS)', async () => {
+    const app = crearApp();
+    const r = await app.call('liga?action=getEquipos&liga=femenino');
+    assert.equal(r.success, true);
+    assert.equal(r.cabeceras['access-control-allow-origin'], undefined);
+    assert.equal(r.cabeceras['cache-control'], 'no-store');
+    const preflight = await app.call('liga?action=getEquipos&liga=femenino', { method: 'OPTIONS' });
+    assert.equal(preflight.status, 405);
+    assert.equal(preflight.cabeceras['access-control-allow-origin'], undefined);
+});
+
 test('las acciones de administrador exigen un token válido y POST', async () => {
     const app = crearApp();
     const reset = { method: 'POST', body: { liga: 'femenino' } };

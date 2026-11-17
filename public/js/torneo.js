@@ -11,6 +11,8 @@
     let historial = [];       // torneos archivados
     let matchActual = null;
 
+    const url = action => `${API_URL}?action=${action}`;
+
     // Se puede editar el cuadro que se está viendo (no los torneos archivados)
     function puedeEditarCuadro() {
         return isAdmin && !archivo;
@@ -30,6 +32,8 @@
     }
 
     function configurarEventos() {
+        document.getElementById('shareBracketBtn').addEventListener('click', compartirCuadro);
+
         if (isAdmin) {
             document.getElementById('addTeamBtn').addEventListener('click', agregarEquipo);
             document.getElementById('generateTournamentBtn').addEventListener('click', generarTorneo);
@@ -44,11 +48,11 @@
 
     // ==================== CARGAR TORNEO DESDE BD ====================
     async function cargarTorneo() {
-        const url = archivo
-            ? `${API_URL}?action=getTorneo&id=${encodeURIComponent(archivo.id)}`
-            : `${API_URL}?action=getTorneo`;
+        const direccion = archivo
+            ? `${url('getTorneo')}&id=${encodeURIComponent(archivo.id)}`
+            : url('getTorneo');
         try {
-            const data = await apiFetch(url);
+            const data = await apiFetch(direccion);
 
             if (data.success && data.data) {
                 torneo = reconstruirTorneo(data.data.partidos);
@@ -82,7 +86,7 @@
         const card = document.getElementById('historyCard');
         const lista = document.getElementById('historyList');
         try {
-            const data = await apiFetch(`${API_URL}?action=getHistorial`);
+            const data = await apiFetch(url('getHistorial'));
             const torneos = data.success ? data.data : [];
             if (torneos.length === 0) {
                 card.style.display = 'none';
@@ -124,23 +128,16 @@
     async function archivarTorneo() {
         if (!puedeEditarCuadro()) return;
         const porDefecto = `Torneo ${new Date().toLocaleDateString('es-ES')}`;
-        const entrada = prompt('Nombre para guardar este torneo en el historial:', porDefecto);
-        if (entrada === null) return;
+        const nombre = await pedirTexto('Nombre con el que se guardará en el historial:', porDefecto, {
+            titulo: '📦 Guardar en el historial',
+            textoAceptar: 'Guardar'
+        });
+        if (nombre === null) return;
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=archivarTorneo`, {
-                method: 'POST',
-                body: { nombre: entrada.trim() || porDefecto }
-            });
-            if (data.success) {
-                await cargarTorneo();
-                alert(`✅ "${data.nombre}" guardado en el historial. Ya puedes inscribir equipos para un torneo nuevo.`);
-            } else {
-                alert('❌ Error al archivar: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        const data = await enviarAccion(url('archivarTorneo'), { nombre: nombre || porDefecto }, { error: 'Error al archivar' });
+        if (data) {
+            notificar(`✅ "${data.nombre}" guardado en el historial.\nYa puedes inscribir parejas para un torneo nuevo.`);
+            await cargarTorneo();
         }
     }
 
@@ -218,56 +215,32 @@
         const nombre = input.value.trim();
 
         if (!nombre) {
-            alert('❌ Introduce el nombre de la pareja');
+            notificar('❌ Introduce el nombre de la pareja', 'error');
             return;
         }
         if (cuadroActualGenerado) {
-            alert('⚠️ El torneo ya está generado. Archívalo (si ha terminado) o resetéalo para inscribir equipos nuevos.');
+            notificar('⚠️ El torneo ya está generado. Guárdalo en el historial (si ha terminado) o resetéalo para inscribir parejas nuevas.', 'error');
             return;
         }
         if (equiposTorneo.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
-            alert('⚠️ Esta pareja ya está inscrita');
+            notificar('⚠️ Esta pareja ya está inscrita', 'error');
             return;
         }
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=addEquipo`, {
-                method: 'POST',
-                body: { nombre }
-            });
-
-            if (data.success) {
-                input.value = '';
-                await cargarTorneo();
-                alert(`✅ Equipo "${nombre}" añadido correctamente`);
-            } else {
-                alert('❌ Error al añadir: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión al servidor');
+        if (await enviarAccion(url('addEquipo'), { nombre }, { ok: `✅ "${nombre}" inscrita`, error: 'Error al añadir' })) {
+            input.value = '';
+            input.focus();
+            await cargarTorneo();
         }
     }
 
     async function eliminarEquipo(id) {
         if (!isAdmin) return;
-        if (!confirm('¿Eliminar este equipo?')) return;
+        const equipo = equiposTorneo.find(e => e.id === id);
+        if (!await confirmar(`¿Quitar a "${equipo?.nombre}" del torneo?`, { titulo: 'Quitar pareja', textoAceptar: 'Quitar', peligro: true })) return;
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=deleteEquipo`, {
-                method: 'POST',
-                body: { id }
-            });
-
-            if (data.success) {
-                await cargarTorneo();
-                alert('✅ Equipo eliminado');
-            } else {
-                alert('❌ Error al eliminar: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        if (await enviarAccion(url('deleteEquipo'), { id }, { ok: '✅ Pareja eliminada', error: 'Error al eliminar' })) {
+            await cargarTorneo();
         }
     }
 
@@ -295,24 +268,11 @@
         const equipo = equiposTorneo.find(e => e.id === id);
         if (!equipo) return;
 
-        const entrada = prompt('Nuevo nombre de la pareja:', equipo.nombre);
-        if (entrada === null) return;
-        const nombre = entrada.trim();
+        const nombre = await pedirTexto('Nuevo nombre de la pareja:', equipo.nombre, { titulo: '✎ Cambiar nombre' });
         if (!nombre || nombre === equipo.nombre) return;
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=renameEquipo`, {
-                method: 'POST',
-                body: { id, nombre }
-            });
-            if (data.success) {
-                await cargarTorneo();
-            } else {
-                alert('❌ Error al renombrar: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        if (await enviarAccion(url('renameEquipo'), { id, nombre }, { ok: `✅ Ahora se llama "${nombre}"`, error: 'Error al renombrar' })) {
+            await cargarTorneo();
         }
     }
 
@@ -320,27 +280,21 @@
     async function generarTorneo() {
         if (!isAdmin) return;
         if (equiposTorneo.length < 2) {
-            alert('⚠️ Necesitas al menos 2 equipos');
+            notificar('⚠️ Necesitas al menos 2 parejas', 'error');
             return;
         }
-        if (cuadroActualGenerado && !confirm('⚠️ Ya hay un cuadro generado. Si haces un nuevo sorteo se perderán los resultados. ¿Continuar?')) {
-            return;
+        if (cuadroActualGenerado) {
+            const seguro = await confirmar(
+                'Ya hay un cuadro generado. Si haces un nuevo sorteo se perderán sus resultados.',
+                { titulo: '🎲 Nuevo sorteo', textoAceptar: 'Sortear de nuevo', peligro: true }
+            );
+            if (!seguro) return;
         }
 
-        try {
-            // El sorteo se hace en el servidor con los equipos inscritos
-            const data = await apiFetch(`${API_URL}?action=crearTorneo`, { method: 'POST', body: {} });
-
-            if (data.success) {
-                archivo = null;
-                await cargarTorneo();
-                alert('✅ Torneo generado correctamente');
-            } else {
-                alert('❌ Error al generar el torneo: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        // El sorteo se hace en el servidor con los equipos inscritos
+        if (await enviarAccion(url('crearTorneo'), {}, { ok: '✅ Cuadro generado', error: 'Error al generar el torneo' })) {
+            archivo = null;
+            await cargarTorneo();
         }
     }
 
@@ -365,6 +319,12 @@
         if (ronda === total - 3) return '🎯 CUARTOS DE FINAL';
         if (ronda === total - 4) return '📊 OCTAVOS DE FINAL';
         return `RONDA ${ronda + 1} (${numPartidos} partidos)`;
+    }
+
+    function textoResultado(resultado) {
+        let s = `${resultado.set1.local}-${resultado.set1.visitante}, ${resultado.set2.local}-${resultado.set2.visitante}`;
+        if (resultado.set3) s += `, ${resultado.set3.local}-${resultado.set3.visitante}`;
+        return s;
     }
 
     function generarMatchHTML(ronda, indice, match) {
@@ -395,9 +355,7 @@
             </div>`;
 
         if (tieneGanador && resultado) {
-            let resultadoStr = `${resultado.set1.local}-${resultado.set1.visitante}, ${resultado.set2.local}-${resultado.set2.visitante}`;
-            if (resultado.set3) resultadoStr += `, ${resultado.set3.local}-${resultado.set3.visitante}`;
-            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#10b981;">✅ ${resultadoStr}</div>`;
+            html += `<div style="text-align:center; margin-top:0.5rem; font-size:0.7rem; color:#10b981;">✅ ${textoResultado(resultado)}</div>`;
             html += `<div style="text-align:center; font-size:0.7rem;">🏆 Avanza: ${escapeHtml(match.winner)}</div>`;
             if (puedeCorregir) {
                 html += `<button class="btn-edit-match" onclick="abrirModalResultado(${ronda}, ${indice})">✏️ Corregir resultado</button>`;
@@ -446,23 +404,15 @@
     async function anularResultado() {
         if (!matchActual) return;
         const partido = matchActual;
-        if (!confirm(`¿Anular el resultado de ${partido.equipo1} vs ${partido.equipo2}? El partido volverá a quedar pendiente.`)) return;
+        const seguro = await confirmar(
+            `¿Anular el resultado de ${partido.equipo1} vs ${partido.equipo2}?\nEl partido volverá a quedar pendiente.`,
+            { titulo: 'Anular resultado', textoAceptar: 'Anular', peligro: true }
+        );
+        if (!seguro) return;
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=anularPartido`, {
-                method: 'POST',
-                body: { id: partido.id }
-            });
-            if (data.success) {
-                cerrarModal();
-                await cargarTorneo();
-                alert('✅ Resultado anulado');
-            } else {
-                alert('❌ Error al anular: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        if (await enviarAccion(url('anularPartido'), { id: partido.id }, { ok: '✅ Resultado anulado', error: 'Error al anular' })) {
+            cerrarModal();
+            await cargarTorneo();
         }
     }
 
@@ -481,43 +431,27 @@
         ]);
         const validacion = validarResultado(sets);
         if (validacion.error) {
-            alert(validacion.error);
+            notificar(validacion.error, 'error');
             return;
         }
 
-        const boton = document.getElementById('confirmResultBtn');
-        boton.disabled = true;
-        try {
-            const data = await apiFetch(`${API_URL}?action=guardarPartido`, {
-                method: 'POST',
-                body: {
-                    id: partido.id,
-                    set1_local: sets[0][0], set1_visitante: sets[0][1],
-                    set2_local: sets[1][0], set2_visitante: sets[1][1],
-                    set3_local: sets[2][0], set3_visitante: sets[2][1]
-                }
-            });
+        const data = await enviarAccion(url('guardarPartido'), {
+            id: partido.id,
+            set1_local: sets[0][0], set1_visitante: sets[0][1],
+            set2_local: sets[1][0], set2_visitante: sets[1][1],
+            set3_local: sets[2][0], set3_visitante: sets[2][1]
+        }, { error: 'Error al guardar' });
 
-            if (data.success) {
-                cerrarModal();
-                await cargarTorneo();
-
-                let resumen = partido.correccion
-                    ? `✅ Resultado corregido!\n\n`
-                    : `✅ Partido registrado correctamente!\n\n`;
-                resumen += `${partido.equipo1} ${data.setsLocal} - ${data.setsVisitante} ${partido.equipo2}\n`;
-                resumen += `📊 ${sets[0][0]}-${sets[0][1]}, ${sets[1][0]}-${sets[1][1]}`;
-                if (validacion.haySet3) resumen += `, ${sets[2][0]}-${sets[2][1]}`;
-                resumen += `\n\n🏆 AVANZA A SIGUIENTE RONDA: ${data.ganador}`;
-                alert(resumen);
-            } else {
-                alert('❌ Error al guardar: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión al servidor');
-        } finally {
-            boton.disabled = false;
+        if (data) {
+            cerrarModal();
+            let detalle = `${sets[0][0]}-${sets[0][1]}, ${sets[1][0]}-${sets[1][1]}`;
+            if (validacion.haySet3) detalle += `, ${sets[2][0]}-${sets[2][1]}`;
+            notificar(
+                `✅ ${partido.correccion ? 'Resultado corregido' : 'Partido registrado'}\n` +
+                `${partido.equipo1} ${data.setsLocal}-${data.setsVisitante} ${partido.equipo2} (${detalle})\n` +
+                `🏆 Avanza: ${data.ganador}`
+            );
+            await cargarTorneo();
         }
     }
 
@@ -543,22 +477,44 @@
 
     async function resetearTorneo() {
         if (!isAdmin) return;
-        if (!confirm('⚠️ ¿Resetear el torneo actual? Se perderán sus equipos y resultados (el historial se conserva).')) return;
+        const seguro = await confirmar(
+            '¿Resetear el torneo actual?\nSe perderán sus parejas y resultados. El historial se conserva.',
+            { titulo: '🔄 Resetear torneo', textoAceptar: 'Resetear', peligro: true }
+        );
+        if (!seguro) return;
 
-        try {
-            const data = await apiFetch(`${API_URL}?action=resetTorneo`, { method: 'POST', body: {} });
-
-            if (data.success) {
-                archivo = null;
-                await cargarTorneo();
-                alert('✅ Torneo reseteado correctamente');
-            } else {
-                alert('❌ Error al resetear: ' + (data.error || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Error de conexión');
+        if (await enviarAccion(url('resetTorneo'), {}, { ok: '✅ Torneo reseteado', error: 'Error al resetear' })) {
+            archivo = null;
+            await cargarTorneo();
         }
+    }
+
+    // ==================== COMPARTIR ====================
+    function compartirCuadro() {
+        if (!torneo) return;
+        const nombre = archivo?.nombre || torneoInfo?.nombre || 'Torneo de pádel';
+        const lineas = [`🏆 *${nombre}*`];
+
+        torneo.rounds.forEach((round, r) => {
+            const titulo = obtenerTituloRonda(r, torneo.rounds.length, round.length).replace(/^\S+\s/, '');
+            lineas.push('', `*${titulo}*`);
+            for (const m of round) {
+                if (m.resultado) {
+                    const gana1 = m.winnerId === m.team1Id;
+                    const e1 = gana1 ? `*${m.team1}*` : m.team1;
+                    const e2 = gana1 ? m.team2 : `*${m.team2}*`;
+                    lineas.push(`✅ ${e1} ${m.resultado.setsGanadosLocal}-${m.resultado.setsGanadosVisitante} ${e2} (${textoResultado(m.resultado)})`);
+                } else if (m.winnerId) {
+                    lineas.push(`🔄 ${m.winner} pasa por descanso`);
+                } else if (m.team1Id || m.team2Id) {
+                    lineas.push(`⏳ ${m.team1 || '?'} vs ${m.team2 || '?'}`);
+                }
+            }
+        });
+
+        if (ganador) lineas.push('', `🥇 *Campeones: ${ganador}*`);
+        lineas.push('', `👉 ${location.origin}/torneo.html`);
+        compartirTexto('Compartir cuadro', lineas.join('\n'));
     }
 
     // ==================== UTILIDADES ====================

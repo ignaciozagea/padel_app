@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const codigo = readFileSync(new URL('../js/api.js', import.meta.url), 'utf8');
+const codigo = readFileSync(new URL('../public/js/api.js', import.meta.url), 'utf8');
 const ctx = vm.createContext({ sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
 vm.runInContext(codigo, ctx);
 const validar = sets => ctx.validarResultado(sets.concat([[null, null], [null, null]]).slice(0, 3));

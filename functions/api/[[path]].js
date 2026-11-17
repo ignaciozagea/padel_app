@@ -5,11 +5,12 @@
 //   - Binding D1 "DB" (ver wrangler.toml) con las migraciones de /migrations aplicadas
 //   - Secreto ADMIN_PASSWORD (wrangler pages secret put ADMIN_PASSWORD)
 
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json'
+// La web y la API se sirven desde el mismo dominio, así que no se envían cabeceras CORS:
+// el navegador bloquea las llamadas a la API desde otras webs.
+const API_HEADERS = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff'
 };
 
 const LIGAS_VALIDAS = ['masculino_avanzado', 'masculino_intermedio', 'masculino_iniciacion', 'femenino'];
@@ -38,7 +39,7 @@ class HttpError extends Error {
 }
 
 function json(body, status = 200, extraHeaders = {}) {
-    return new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, ...extraHeaders } });
+    return new Response(JSON.stringify(body), { status, headers: { ...API_HEADERS, ...extraHeaders } });
 }
 
 async function leerJson(request) {
@@ -61,8 +62,8 @@ export async function onRequest(context) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
 
-    if (request.method === 'OPTIONS') {
-        return new Response(null, { headers: CORS_HEADERS });
+    if (request.method !== 'GET' && request.method !== 'POST') {
+        return json({ success: false, error: 'Método no permitido' }, 405, { Allow: 'GET, POST' });
     }
 
     try {

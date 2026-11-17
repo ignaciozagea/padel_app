@@ -6,6 +6,7 @@
     <title>🏆 Liga de Pádel | Torneo Eliminación Directa</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/torneo.css">
+    <link rel="stylesheet" href="css/comun.css">
 </head>
 <body>
 
@@ -43,7 +44,10 @@
 
     <!-- Árbol del Torneo -->
     <div class="card" id="bracketCard" style="display: none;">
-        <h2>🏅 Desarrollo del Torneo (Mejor de 3 sets)</h2>
+        <div class="card-cabecera">
+            <h2>🏅 Desarrollo del Torneo (Mejor de 3 sets)</h2>
+            <button class="btn btn-secondary btn-sm" id="shareBracketBtn">📤 Compartir</button>
+        </div>
         <div id="archiveBanner" class="archive-banner" style="display: none;"></div>
         <div id="bracketContainer" class="bracket"></div>
         <div id="winnerAnnouncement" class="winner-announcement" style="display: none;"></div>
@@ -100,6 +104,7 @@
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/torneo.js"></script>
 
 </body>

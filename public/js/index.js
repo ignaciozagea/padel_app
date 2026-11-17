@@ -24,7 +24,7 @@
             if (data.success && data.token) {
                 guardarSesion(data.token);
                 cerrarModal();
-                alert('✅ Acceso concedido. Ahora puedes gestionar ligas y torneos.');
+                notificar('✅ Acceso concedido. Ahora puedes gestionar ligas y torneos.');
             } else {
                 errorDiv.textContent = '❌ ' + (data.error || 'Contraseña incorrecta');
             }

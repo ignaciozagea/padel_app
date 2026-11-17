@@ -6,6 +6,7 @@
     <title>🏆 Liga de Pádel | Gestión de Ligas</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/liga.css">
+    <link rel="stylesheet" href="css/comun.css">
 </head>
 <body>
 
@@ -53,14 +54,16 @@
                     <button class="btn btn-primary" id="generateCalendarBtn">🎲 Generar Calendario</button>
                     <button class="btn btn-danger" id="resetLigaBtn">🔄 Resetear Liga</button>
                 </div>
-                <div class="info-text" id="calendarStatus"></div>
             </div>
         </div>
     </div>
     
     <!-- Clasificación -->
     <div class="card full-width">
-        <h2>🏆 Clasificación</h2>
+        <div class="card-cabecera">
+            <h2>🏆 Clasificación</h2>
+            <button class="btn btn-secondary btn-sm" id="shareStandingsBtn">📤 Compartir</button>
+        </div>
         <div id="standingsContainer" class="standings-container"></div>
     </div>
     
@@ -72,6 +75,7 @@
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/liga.js"></script>
 
 </body>
