@@ -66,15 +66,14 @@
             66% { transform: translate(15px, -10px); }
         }
 
-        .container {
-            position: relative;
-            z-index: 1;
-            min-height: 100vh;
+        /* La barra de navegación va arriba (base.css); el contenido de la portada se centra debajo */
+        .portada {
+            min-height: calc(100vh - 7rem);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 2rem;
+            padding: 1rem 0 2rem;
         }
 
         .hero {
@@ -82,6 +81,8 @@
             margin-bottom: 4rem;
             animation: fadeInUp 0.8s ease-out;
         }
+
+        .eyebrow .ico { color: var(--pelota); }
 
         .eyebrow {
             display: inline-flex;
@@ -125,7 +126,8 @@
             animation: fadeInUp 0.8s ease-out 0.2s backwards;
         }
 
-        .btn {
+        .portada .btn,
+        .modal-content .btn {
             display: inline-flex;
             align-items: center;
             gap: 0.75rem;
@@ -167,9 +169,22 @@
             animation: fadeInUp 0.8s ease-out 0.4s backwards;
         }
 
+        .admin-section + .admin-section { margin-top: 2rem; }
+
         .admin-section p {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
             color: #94a3b8;
             margin-bottom: 1rem;
+        }
+
+        .modal-content h3 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
         .btn-admin {
@@ -262,8 +277,10 @@
             .buttons-container {
                 gap: 1rem;
             }
-            .btn {
+            .portada .btn {
                 padding: 0.75rem 1.5rem;
                 font-size: 1rem;
             }
         }
+        /* El título del acceso usa texto con degradado (color transparente): el icono necesita color propio */
+        .modal-content h3 .ico { color: #38bdf8; }

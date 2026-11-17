@@ -61,3 +61,12 @@ test('0002 convierte los datos del esquema antiguo sin perderlos', () => {
     assert.deepEqual(partidos.map(p => [p.n1, p.n2, p.ng]), [['X', null, 'X'], ['Y', 'W', 'W'], ['X', 'W', null]]);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM torneo_equipos WHERE torneo_id = 99').get().n, 0);
 });
+
+test('0007 quita el emoji de las ligas por defecto pero respeta las renombradas', () => {
+    const db = nuevaBaseDeDatos();
+    for (const m of MIGRACIONES.filter(m => m < '0007')) aplicarMigracion(db, m);
+    db.exec("UPDATE ligas SET nombre = '👨 Los del jueves' WHERE slug = 'masculino_intermedio'");
+    aplicarMigracion(db, '0007_nombres_ligas_sin_emoji.sql');
+    const nombres = db.prepare('SELECT nombre FROM ligas ORDER BY orden').all().map(l => l.nombre);
+    assert.deepEqual(nombres, ['Masculino Avanzado', '👨 Los del jueves', 'Masculino Iniciación', 'Femenino']);
+});

@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>🏆 Liga de Pádel | Torneo Eliminación Directa</title>
+    <title>Torneo · Pádel GO</title>
+    <meta name="description" content="Cuadro de eliminación directa e historial de torneos de pádel">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/torneo.css">
     <link rel="stylesheet" href="css/comun.css">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -21,94 +23,117 @@
 <div class="orb orb-2"></div>
 
 <div class="container">
-    <div class="header">
-        <div class="logo">
-            <a href="index.html">
-                <h1>🏆 Torneo de Pádel</h1>
-            </a>
-            <p>Eliminación directa | Mejor de 3 sets | Datos persistentes</p>
-        </div>
+    <header class="topbar">
+        <a class="marca" href="/" aria-label="Pádel GO, inicio">
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg>
+            <span>Pádel GO</span>
+        </a>
+        <nav class="menu" aria-label="Secciones">
+            <a href="/"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#inicio"></use></svg>Inicio</a>
+            <a href="/liga"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg>Liga</a>
+            <a href="/torneo" aria-current="page"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Torneo</a>
+        </nav>
         <div class="admin-badge" id="adminBadge" style="display: none;">
-            <span>👑 Modo Administrador</span>
-            <a href="#" class="btn btn-secondary btn-sm" onclick="cerrarSesion()">Cerrar sesión</a>
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#corona"></use></svg>
+            <span class="admin-texto">Administrador</span>
+            <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#salir"></use></svg>Salir
+            </button>
         </div>
+    </header>
+
+    <div class="page-head">
+        <h1><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Torneo</h1>
+        <p>Cuadro de eliminación directa e historial</p>
     </div>
 
     <!-- Panel Admin -->
     <div id="adminPanel" style="display: none;">
         <div class="card">
-            <h2>📋 Gestión del Torneo</h2>
+            <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#parejas"></use></svg>Parejas inscritas</h2>
             <div class="form-group">
-                <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)">
-                <button class="btn btn-primary" id="addTeamBtn">➕ Agregar</button>
-                <button class="btn btn-primary" id="generateTournamentBtn">🎲 Generar Torneo</button>
-                <button class="btn btn-danger" id="resetTournamentBtn">🔄 Resetear</button>
+                <input type="text" id="teamName" placeholder="Nombre de la pareja (ej: García/López)" maxlength="60">
+                <button class="btn btn-primary" id="addTeamBtn">
+                    <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#mas"></use></svg>Añadir
+                </button>
+                <button class="btn btn-primary" id="generateTournamentBtn">
+                    <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#sorteo"></use></svg>Sortear cuadro
+                </button>
+                <button class="btn btn-danger" id="resetTournamentBtn">
+                    <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#reiniciar"></use></svg>Resetear
+                </button>
             </div>
             <div id="teamsList" class="teams-list"></div>
-            <div class="info-text">Equipos inscritos: <span id="teamCount">0</span> | Recomendado: 4, 8, 16 equipos</div>
+            <div class="info-text">Parejas inscritas: <span id="teamCount">0</span> · Lo ideal son 4, 8 o 16 (si no, algunas pasan por descanso)</div>
             <label class="ui-opcion">
                 <input type="checkbox" id="superTiebreakTorneo">
-                <span>🎾 Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
+                <span>Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
             </label>
         </div>
     </div>
 
-    <!-- Árbol del Torneo -->
-    <div class="card" id="bracketCard" style="display: none;">
+    <!-- Cuadro del torneo -->
+    <section class="card" id="bracketCard" style="display: none;">
         <div class="card-cabecera">
-            <h2>🏅 Desarrollo del Torneo (Mejor de 3 sets)</h2>
-            <button class="btn btn-secondary btn-sm" id="shareBracketBtn">📤 Compartir</button>
+            <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Cuadro</h2>
+            <button class="btn btn-secondary btn-sm" id="shareBracketBtn">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#compartir"></use></svg>Compartir
+            </button>
         </div>
         <div id="archiveBanner" class="archive-banner" style="display: none;"></div>
         <div id="bracketContainer" class="bracket"></div>
         <div id="winnerAnnouncement" class="winner-announcement" style="display: none;"></div>
-    </div>
+    </section>
 
     <!-- Historial de torneos archivados -->
-    <div class="card" id="historyCard" style="display: none;">
-        <h2>📚 Historial de Torneos</h2>
+    <section class="card" id="historyCard" style="display: none;">
+        <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#historial"></use></svg>Historial de torneos</h2>
         <div id="historyList" class="history-list"></div>
-    </div>
+    </section>
 </div>
 
-<!-- Modal de Resultados con 3 sets -->
+<!-- Modal de resultado (mejor de 3 sets) -->
 <div id="resultModal" class="modal">
-    <div class="modal-content">
-        <h3 id="modalTitle">🎾 Registrar Resultado del Partido</h3>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <h3><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg><span id="modalTitle">Registrar resultado</span></h3>
         <div class="modal-teams" id="modalTeams"></div>
-        
+
         <div class="sets-container">
             <div class="set-card">
-                <label>🎾 SET 1</label>
+                <label>Set 1</label>
                 <div class="set-inputs">
-                    <input type="number" id="modal_set1_local" placeholder="0" min="0" max="7" step="1" value="0">
+                    <input type="number" id="modal_set1_local" placeholder="0" min="0" max="7" step="1" value="0" aria-label="Set 1, primera pareja">
                     <span>-</span>
-                    <input type="number" id="modal_set1_visit" placeholder="0" min="0" max="7" step="1" value="0">
+                    <input type="number" id="modal_set1_visit" placeholder="0" min="0" max="7" step="1" value="0" aria-label="Set 1, segunda pareja">
                 </div>
             </div>
             <div class="set-card">
-                <label>🎾 SET 2</label>
+                <label>Set 2</label>
                 <div class="set-inputs">
-                    <input type="number" id="modal_set2_local" placeholder="0" min="0" max="7" step="1" value="0">
+                    <input type="number" id="modal_set2_local" placeholder="0" min="0" max="7" step="1" value="0" aria-label="Set 2, primera pareja">
                     <span>-</span>
-                    <input type="number" id="modal_set2_visit" placeholder="0" min="0" max="7" step="1" value="0">
+                    <input type="number" id="modal_set2_visit" placeholder="0" min="0" max="7" step="1" value="0" aria-label="Set 2, segunda pareja">
                 </div>
             </div>
             <div class="set-card">
-                <label id="modalSet3Label">🎾 SET 3 (opcional)</label>
+                <label id="modalSet3Label">Set 3 (si 1-1)</label>
                 <div class="set-inputs">
-                    <input type="number" id="modal_set3_local" placeholder="-" min="0" max="7" step="1">
+                    <input type="number" id="modal_set3_local" placeholder="-" min="0" max="7" step="1" aria-label="Set 3, primera pareja">
                     <span>-</span>
-                    <input type="number" id="modal_set3_visit" placeholder="-" min="0" max="7" step="1">
+                    <input type="number" id="modal_set3_visit" placeholder="-" min="0" max="7" step="1" aria-label="Set 3, segunda pareja">
                 </div>
             </div>
         </div>
-        
-        <div class="info-text">⚠️ El ganador se determina automáticamente por sets ganados (2-0 o 2-1)</div>
-        
-        <div class="form-group" style="justify-content: center; margin-top: 1rem;">
-            <button class="btn btn-success" id="confirmResultBtn">✅ Confirmar Resultado</button>
-            <button class="btn btn-danger" id="annulResultBtn" style="display: none;">🗑️ Anular Resultado</button>
+
+        <div class="info-text">El ganador se calcula por sets ganados (2-0 o 2-1).</div>
+
+        <div class="modal-botones">
+            <button class="btn btn-success" id="confirmResultBtn">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#check"></use></svg>Guardar resultado
+            </button>
+            <button class="btn btn-danger" id="annulResultBtn" style="display: none;">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#papelera"></use></svg>Anular
+            </button>
             <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
         </div>
     </div>

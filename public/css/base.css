@@ -1,0 +1,383 @@
+/* ==================== BASE COMÚN DE PÁDEL GO ====================
+   Fondo, barra de navegación, tarjetas, botones, iconos y formularios.
+   Cada página añade su hoja propia (index.css, liga.css, torneo.css) y comun.css (avisos y ventanas). */
+
+:root {
+    --fondo-1: #020617;
+    --fondo-2: #0f172a;
+    --fondo-3: #1e1b4b;
+    --texto: #f1f5f9;
+    --texto-suave: #94a3b8;
+    --acento: #38bdf8;
+    --acento-2: #0ea5e9;
+    --pelota: #d9f24a;
+    --exito: #10b981;
+    --peligro: #ef4444;
+    --borde: rgba(255, 255, 255, 0.1);
+    --tarjeta: rgba(15, 23, 42, 0.7);
+    --oro: #fbbf24;
+    --plata: #cbd5e1;
+    --bronce: #d97706;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--fondo-1) 0%, var(--fondo-2) 50%, var(--fondo-3) 100%);
+    background-attachment: fixed;
+    color: var(--texto);
+    overflow-x: hidden;
+}
+
+.orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+}
+.orb-1 { top: -10rem; left: -10rem; width: 30rem; height: 30rem; background: radial-gradient(circle, rgba(56, 189, 248, 0.4), transparent); }
+.orb-2 { bottom: -10rem; right: -10rem; width: 35rem; height: 35rem; background: radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent); }
+
+.container {
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 3rem;
+}
+
+/* ---------- Iconos (img/iconos.svg) ---------- */
+.ico {
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
+    vertical-align: -0.2em;
+    stroke: currentColor;
+    fill: none;
+}
+
+/* ---------- Barra superior: marca + navegación + sesión ---------- */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.marca {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--texto);
+    text-decoration: none;
+}
+
+.marca .ico {
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--pelota);
+}
+
+.marca span {
+    background: linear-gradient(135deg, #fff, var(--acento));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.menu {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.3rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+}
+
+.menu a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    color: var(--texto-suave);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.menu a:hover { color: var(--texto); }
+
+.menu a[aria-current="page"] {
+    background: rgba(56, 189, 248, 0.15);
+    color: #e0f2fe;
+}
+
+.admin-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.9rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 999px;
+    font-size: 0.85rem;
+}
+
+.admin-badge .ico { color: var(--oro); }
+
+/* ---------- Cabecera de página ---------- */
+.page-head {
+    margin-bottom: 1.5rem;
+}
+
+.page-head h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.page-head h1 .ico { color: var(--acento); }
+
+.page-head p {
+    margin-top: 0.25rem;
+    color: var(--texto-suave);
+}
+
+/* ---------- Tarjetas ---------- */
+.card {
+    background: var(--tarjeta);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--borde);
+    border-radius: 24px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--acento);
+}
+
+.info-text {
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+    margin: 1rem 0;
+}
+
+/* ---------- Formularios ---------- */
+.form-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-group input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    color: white;
+    font: inherit;
+    font-size: 0.95rem;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--acento);
+}
+
+/* ---------- Botones ---------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1.15rem;
+    border: none;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+}
+
+.btn:hover { transform: translateY(-1px); }
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--acento), var(--acento-2));
+    color: var(--fondo-1);
+}
+
+.btn-primary:hover { box-shadow: 0 6px 18px rgba(56, 189, 248, 0.3); }
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+}
+
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--peligro);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--exito), #059669);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    border-radius: 12px;
+}
+
+/* Botón solo con icono (editar, borrar...) */
+.btn-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--texto-suave);
+    cursor: pointer;
+}
+
+.btn-ico:hover { background: rgba(255, 255, 255, 0.08); color: var(--texto); }
+.btn-ico.peligro:hover { color: var(--peligro); }
+
+/* ---------- Etiquetas de parejas / ligas (paneles de administración) ---------- */
+.teams-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.team-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.3rem 0.35rem 0.3rem 0.85rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 999px;
+    font-size: 0.85rem;
+}
+
+.team-tag > span { margin-right: 0.25rem; }
+.team-tag small { color: var(--texto-suave); }
+
+/* ---------- Pestañas (ligas): una sola fila que se desliza en el móvil ---------- */
+.liga-nav {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 1.5rem;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+}
+
+.liga-nav::-webkit-scrollbar { display: none; }
+
+.liga-btn {
+    flex: 0 0 auto;
+    padding: 0.6rem 1.2rem;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    color: var(--texto-suave);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.liga-btn:hover { color: var(--texto); }
+
+.liga-btn.active {
+    background: linear-gradient(135deg, var(--acento), var(--acento-2));
+    color: var(--fondo-1);
+}
+
+/* ---------- Posición en la clasificación (medallas) ---------- */
+.pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--texto-suave);
+}
+
+.pos-1, .pos-2, .pos-3 { color: var(--fondo-1); }
+.pos-1 { background: linear-gradient(135deg, #fde68a, var(--oro)); }
+.pos-2 { background: linear-gradient(135deg, #f1f5f9, var(--plata)); }
+.pos-3 { background: linear-gradient(135deg, #fdba74, var(--bronce)); }
+
+/* ---------- Adaptación a pantallas pequeñas ---------- */
+@media (max-width: 640px) {
+    .container { padding: 0.75rem 1rem 2.5rem; }
+
+    .topbar { gap: 0.75rem; }
+    .menu { order: 3; width: 100%; justify-content: space-between; }
+    .menu a { flex: 1; justify-content: center; padding: 0.5rem 0.5rem; }
+    .admin-badge .admin-texto { display: none; }
+
+    .card { padding: 1rem; border-radius: 20px; }
+    .card h2 { font-size: 1.05rem; }
+    .liga-btn { padding: 0.5rem 0.95rem; font-size: 0.85rem; }
+}
+
+/* Casillas de juegos: sin las flechas del navegador (en el móvil sale el teclado numérico) */
+.set-inputs input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.set-inputs input[type="number"]::-webkit-inner-spin-button,
+.set-inputs input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }

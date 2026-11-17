@@ -51,7 +51,7 @@
     }
 
     async function salir() {
-        const seguro = await confirmar('¿Cerrar la sesión de administrador?', { titulo: '🚪 Cerrar sesión', textoAceptar: 'Cerrar sesión' });
+        const seguro = await confirmar('¿Cerrar la sesión de administrador?', { titulo: 'Cerrar sesión', iconoTitulo: 'salir', textoAceptar: 'Cerrar sesión' });
         if (!seguro) return;
         sessionStorage.removeItem(AUTH_KEY);
         mostrarEstadoSesion();

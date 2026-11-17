@@ -2,6 +2,22 @@
 // Avisos, ventanas de confirmación/texto, indicador de carga y ventana de compartir.
 // Requiere js/api.js (escapeHtml) cargado antes.
 
+// ---------- Iconos (img/iconos.svg) ----------
+// Devuelve el HTML de un icono del juego de iconos de la app, p. ej. icono('trofeo')
+function icono(nombre, clase = '') {
+    return `<svg class="ico ${clase}" aria-hidden="true"><use href="/img/iconos.svg#${nombre}"></use></svg>`;
+}
+
+// Quita un emoji (o símbolo) del principio de un texto: los avisos y títulos llevan su propio icono
+function sinEmojiInicial(texto) {
+    return String(texto).replace(/^(?:[\p{Extended_Pictographic}✀-➿←-⇿⬀-⯿]️?\s*)+/u, '');
+}
+
+// Botón con icono y texto para las ventanas: { icono: 'copiar', texto: 'Copiar' }
+function contenidoBoton(b) {
+    return (b.icono ? icono(b.icono) : '') + `<span>${escapeHtml(sinEmojiInicial(b.texto))}</span>`;
+}
+
 // ---------- Avisos (sustituyen a alert) ----------
 function contenedorAvisos() {
     let c = document.getElementById('ui-avisos');
@@ -20,7 +36,9 @@ function notificar(mensaje, tipo = 'ok') {
     const aviso = document.createElement('div');
     aviso.className = `ui-aviso ui-aviso-${tipo}`;
     aviso.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
-    aviso.textContent = mensaje;
+    const iconoTipo = { ok: 'check-circulo', error: 'alerta', info: 'info' }[tipo] || 'info';
+    aviso.innerHTML = `${icono(iconoTipo, 'ui-aviso-ico')}<span class="ui-aviso-texto"></span>`;
+    aviso.querySelector('.ui-aviso-texto').textContent = sinEmojiInicial(mensaje);
     aviso.title = 'Cerrar';
 
     const quitar = () => {
@@ -33,9 +51,10 @@ function notificar(mensaje, tipo = 'ok') {
 }
 
 // ---------- Ventana modal genérica ----------
-// botones: [{ texto, clase, valor, alPulsar(ventana) }]; valor puede ser una función (ventana) => valor.
-// Si alPulsar devuelve false, la ventana no se cierra. Escape o clic fuera -> null.
-function abrirVentana({ titulo, html = '', botones = [{ texto: 'Cerrar', valor: null }], ancho = 480, alAbrir } = {}) {
+// botones: [{ texto, icono, clase, valor, alPulsar(ventana) }]; valor puede ser una función (ventana) => valor.
+// iconoTitulo: icono junto al título. Si alPulsar devuelve false, la ventana no se cierra.
+// Escape o clic fuera -> null.
+function abrirVentana({ titulo, iconoTitulo, html = '', botones = [{ texto: 'Cerrar', valor: null }], ancho = 480, alAbrir } = {}) {
     return new Promise(resolve => {
         const fondo = document.createElement('div');
         fondo.className = 'ui-fondo';
@@ -46,13 +65,13 @@ function abrirVentana({ titulo, html = '', botones = [{ texto: 'Cerrar', valor: 
         ventana.style.maxWidth = `${ancho}px`;
         ventana.innerHTML = `
             <div class="ui-ventana-cabecera">
-                <h3 class="ui-titulo"></h3>
-                <button class="ui-cerrar" aria-label="Cerrar">✕</button>
+                <h3 class="ui-titulo">${iconoTitulo ? icono(iconoTitulo) : ''}<span></span></h3>
+                <button class="ui-cerrar" aria-label="Cerrar">${icono('cerrar')}</button>
             </div>
             <div class="ui-cuerpo">${html}</div>
             <div class="ui-botones"></div>
         `;
-        ventana.querySelector('.ui-titulo').textContent = titulo;
+        ventana.querySelector('.ui-titulo span').textContent = sinEmojiInicial(titulo);
         fondo.appendChild(ventana);
 
         const focoAnterior = document.activeElement;
@@ -68,7 +87,7 @@ function abrirVentana({ titulo, html = '', botones = [{ texto: 'Cerrar', valor: 
         for (const b of botones) {
             const btn = document.createElement('button');
             btn.className = `btn ${b.clase || 'btn-secondary'}`;
-            btn.textContent = b.texto;
+            btn.innerHTML = contenidoBoton(b);
             btn.addEventListener('click', async () => {
                 if (b.alPulsar && (await b.alPulsar(ventana)) === false) return;
                 cerrar(typeof b.valor === 'function' ? b.valor(ventana) : b.valor);
@@ -86,22 +105,24 @@ function abrirVentana({ titulo, html = '', botones = [{ texto: 'Cerrar', valor: 
 }
 
 // Sustituye a confirm(): devuelve true/false
-async function confirmar(mensaje, { titulo = 'Confirmar', textoAceptar = 'Aceptar', peligro = false } = {}) {
+async function confirmar(mensaje, { titulo = 'Confirmar', iconoTitulo, textoAceptar = 'Aceptar', iconoAceptar, peligro = false } = {}) {
     const r = await abrirVentana({
         titulo,
+        iconoTitulo: iconoTitulo || (peligro ? 'alerta' : 'info'),
         html: `<p class="ui-mensaje">${escapeHtml(mensaje)}</p>`,
         botones: [
             { texto: 'Cancelar', valor: false },
-            { texto: textoAceptar, clase: peligro ? 'btn-danger' : 'btn-primary', valor: true }
+            { texto: textoAceptar, icono: iconoAceptar, clase: peligro ? 'btn-danger' : 'btn-primary', valor: true }
         ]
     });
     return r === true;
 }
 
 // Sustituye a prompt(): devuelve el texto (sin espacios sobrantes) o null si se cancela
-async function pedirTexto(mensaje, valorInicial = '', { titulo = 'Introduce un valor', textoAceptar = 'Guardar' } = {}) {
+async function pedirTexto(mensaje, valorInicial = '', { titulo = 'Introduce un valor', iconoTitulo = 'editar', textoAceptar = 'Guardar' } = {}) {
     const r = await abrirVentana({
         titulo,
+        iconoTitulo,
         html: `
             <label class="ui-mensaje" for="ui-campo-texto">${escapeHtml(mensaje)}</label>
             <input id="ui-campo-texto" class="ui-input" type="text" maxlength="60" autocomplete="off">
@@ -199,21 +220,21 @@ async function copiarAlPortapapeles(texto) {
 function compartirTexto(titulo, texto) {
     const botones = [
         {
-            texto: '📋 Copiar',
+            texto: 'Copiar', icono: 'copiar',
             alPulsar: async () => {
-                if (await copiarAlPortapapeles(texto)) notificar('📋 Copiado al portapapeles');
+                if (await copiarAlPortapapeles(texto)) notificar('Copiado al portapapeles');
                 else notificar('No se ha podido copiar el texto', 'error');
             }
         },
         {
-            texto: '💬 WhatsApp',
+            texto: 'WhatsApp', icono: 'mensaje',
             clase: 'btn-success',
             alPulsar: () => { window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener'); }
         }
     ];
     if (navigator.share) {
         botones.push({
-            texto: '📤 Más opciones',
+            texto: 'Más opciones', icono: 'mas-opciones',
             clase: 'btn-primary',
             alPulsar: async () => {
                 try { await navigator.share({ title: titulo, text: texto }); } catch { return false; }
@@ -221,7 +242,8 @@ function compartirTexto(titulo, texto) {
         });
     }
     return abrirVentana({
-        titulo: `📤 ${titulo}`,
+        titulo,
+        iconoTitulo: 'compartir',
         html: `<pre class="ui-texto-compartir">${escapeHtml(texto)}</pre>`,
         botones,
         ancho: 520
