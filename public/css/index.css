@@ -284,3 +284,48 @@
         }
         /* El título del acceso usa texto con degradado (color transparente): el icono necesita color propio */
         .modal-content h3 .ico { color: #38bdf8; }
+
+        /* Código de jugadores para comentar (solo administrador) */
+        .codigo-comentarios {
+            margin: 1.75rem auto 0;
+            max-width: 420px;
+            padding: 1rem;
+            text-align: left;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+        }
+
+        .codigo-comentarios label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .codigo-comentarios label .ico { color: #38bdf8; }
+
+        .codigo-fila { display: flex; gap: 0.5rem; }
+
+        .codigo-fila input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.6rem 0.8rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font: inherit;
+        }
+
+        .codigo-fila input:focus { outline: none; border-color: #38bdf8; }
+
+        .codigo-comentarios small {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }

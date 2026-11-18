@@ -47,8 +47,46 @@
             const caduca = new Date(Number(token.split('.')[0]));
             const hora = caduca.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             document.getElementById('sessionExpiry').textContent = `(hasta las ${hora})`;
+            cargarCodigoComentarios();
         }
     }
+
+    // ==================== CÓDIGO PARA COMENTAR ====================
+    function mostrarEstadoCodigo(codigo) {
+        document.getElementById('codigoEstado').textContent = codigo
+            ? 'Comentarios activados. Comparte este código en el grupo de jugadores.'
+            : 'Comentarios desactivados: los partidos solo muestran los comentarios que ya existan.';
+    }
+
+    async function cargarCodigoComentarios() {
+        try {
+            const data = await apiFetch('/api/comentarios?action=getCodigo', { method: 'POST', body: {} });
+            if (data.success) {
+                document.getElementById('codigoComentarios').value = data.codigo;
+                mostrarEstadoCodigo(data.codigo);
+            }
+        } catch (error) {
+            console.error('Error cargando el código:', error);
+        }
+    }
+
+    async function guardarCodigoComentarios() {
+        const codigo = document.getElementById('codigoComentarios').value.trim();
+        if (codigo && codigo.length < 4) {
+            notificar('El código tiene que tener al menos 4 caracteres', 'error');
+            return;
+        }
+        const data = await enviarAccion('/api/comentarios?action=configurarCodigo', { codigo }, {
+            ok: codigo ? 'Código guardado: comentarios activados' : 'Comentarios desactivados',
+            error: 'No se ha podido guardar el código'
+        });
+        if (data) mostrarEstadoCodigo(codigo);
+    }
+
+    document.getElementById('guardarCodigoBtn').addEventListener('click', guardarCodigoComentarios);
+    document.getElementById('codigoComentarios').addEventListener('keydown', e => {
+        if (e.key === 'Enter') guardarCodigoComentarios();
+    });
 
     async function salir() {
         const seguro = await confirmar('¿Cerrar la sesión de administrador?', { titulo: 'Cerrar sesión', iconoTitulo: 'salir', textoAceptar: 'Cerrar sesión' });

@@ -5,7 +5,7 @@
 // la copia guardada solo se usa sin conexión. Así nunca se mezcla HTML nuevo con JS antiguo
 // tras un despliegue. Las peticiones POST (guardar cambios) no pasan por la caché.
 
-const VERSION = 'padel-go-v3';
+const VERSION = 'padel-go-v4';
 
 // Lo mínimo para que la app abra sin conexión
 const PRECARGA = [
@@ -24,6 +24,7 @@ const PRECARGA = [
     '/js/liga.js',
     '/js/torneo.js',
     '/js/individual.js',
+    '/js/comentarios.js',
     '/css/individual.css',
     '/manifest.webmanifest',
     '/img/iconos.svg',

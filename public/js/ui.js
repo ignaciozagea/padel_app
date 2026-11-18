@@ -88,7 +88,12 @@ function abrirVentana({ titulo, iconoTitulo, html = '', botones = [{ texto: 'Cer
             focoAnterior?.focus?.();
             resolve(valor);
         };
-        const alPulsarTecla = e => { if (e.key === 'Escape') cerrar(null); };
+        // Escape cierra solo la ventana de arriba (puede haber una confirmación encima de otra ventana)
+        const alPulsarTecla = e => {
+            if (e.key !== 'Escape') return;
+            const ventanas = document.querySelectorAll('.ui-fondo');
+            if (ventanas[ventanas.length - 1] === fondo) cerrar(null);
+        };
 
         const botonera = ventana.querySelector('.ui-botones');
         for (const b of botones) {

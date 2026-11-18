@@ -15,10 +15,17 @@
     async function init() {
         checkAdminAuth();
         configurarEventos();
+        iniciarComentarios('liga', tituloPartido);
         await cargarLigas();
         // La liga se puede indicar en la URL (?liga=femenino), p. ej. desde un enlace compartido
         const pedida = new URLSearchParams(location.search).get('liga');
         seleccionarLiga(ligas.some(l => l.slug === pedida) ? pedida : ligas[0]?.slug);
+    }
+
+    // Título de la ventana de comentarios de un partido
+    function tituloPartido(id) {
+        const p = Object.values(calendario).flat().find(x => x.id === id);
+        return p ? `${p.local} vs ${p.visitante} · Jornada ${p.jornada}` : 'Comentarios';
     }
 
     function checkAdminAuth() {
@@ -348,6 +355,7 @@
         }
 
         container.innerHTML = html;
+        pintarZonasComentarios();
     }
 
     // Una fila del marcador: nombre de la pareja, juegos de cada set y puntos obtenidos
@@ -439,6 +447,7 @@
             <div class="partido ${partido.completado ? 'jugado' : 'pendiente'}">
                 ${marcador}
                 <div class="partido-pie">${pie}</div>
+                ${zonaComentarios(partido.id)}
             </div>`;
     }
 

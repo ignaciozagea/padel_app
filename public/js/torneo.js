@@ -14,6 +14,12 @@
 
     const url = action => `${API_URL}?action=${action}`;
 
+    // Título de la ventana de comentarios de un partido
+    function tituloPartido(id) {
+        const m = torneo?.rounds.flat().find(x => x.dbId === id);
+        return m ? `${m.team1} vs ${m.team2}` : 'Comentarios';
+    }
+
     // Se puede editar el cuadro que se está viendo (no los torneos archivados)
     function puedeEditarCuadro() {
         return isAdmin && !archivo;
@@ -23,6 +29,7 @@
     function init() {
         checkAdminAuth();
         configurarEventos();
+        iniciarComentarios('torneo', tituloPartido);
         cargarTorneo();
     }
 
@@ -347,6 +354,7 @@
                     </div>
                 </div>`;
         }).join('');
+        pintarZonasComentarios();
     }
 
     function obtenerTituloRonda(ronda, total, numPartidos) {
@@ -410,7 +418,9 @@
             <div class="match">
                 ${fila(match.team1, match.team1Id, esBye1, 'local')}
                 ${fila(match.team2, match.team2Id, esBye2, 'visitante')}
-                ${pie ? `<div class="match-pie">${pie}</div>` : ''}
+                ${pie || ambosPresentes
+                    ? `<div class="match-pie">${pie}${ambosPresentes ? zonaComentarios(match.dbId, { compacta: true }) : ''}</div>`
+                    : ''}
             </div>`;
     }
 
