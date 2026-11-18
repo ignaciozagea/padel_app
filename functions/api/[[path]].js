@@ -31,7 +31,8 @@ const ACCIONES_ADMIN = {
     individual: ['addJugador', 'renameJugador', 'deleteJugador', 'ordenarJugadores', 'generarJornada',
                  'deshacerJornada', 'guardarResultado', 'anularResultado', 'resetIndividual', 'configurar'],
     // "comentar" no está aquí: lo puede usar cualquiera con el código de jugadores
-    comentarios: ['borrarComentario', 'configurarCodigo', 'getCodigo']
+    comentarios: ['borrarComentario', 'configurarCodigo', 'getCodigo'],
+    fotos: ['subir', 'borrar']
 };
 
 class HttpError extends Error {
@@ -91,6 +92,7 @@ export async function onRequest(context) {
         if (recurso === 'liga') return await handleLiga(request, env.DB, url, action);
         if (recurso === 'individual') return await handleIndividual(request, env.DB, action);
         if (recurso === 'comentarios') return await handleComentarios(request, env, url, action);
+        if (recurso === 'fotos') return await handleFotos(request, env.DB, url, action);
         return await handleTorneo(request, env.DB, url, action);
     } catch (error) {
         if (error instanceof HttpError) {
@@ -367,7 +369,7 @@ function puntosPartido(setsLocal, setsVisitante) {
 
 function calcularClasificacion(equipos, partidos) {
     const stats = new Map(equipos.map(e => [e.id, {
-        id: e.id, nombre: e.nombre,
+        id: e.id, nombre: e.nombre, foto_v: e.foto_v ?? null,
         pj: 0, pg: 0, pp1: 0, pp0: 0, puntos: 0,
         sets_favor: 0, sets_contra: 0, juegos_favor: 0, juegos_contra: 0
     }]));
@@ -493,6 +495,7 @@ async function handleLiga(request, db, url, action) {
             await db.batch([
                 db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(slug),
                 db.prepare('DELETE FROM liga_equipos WHERE liga_nombre = ?').bind(slug),
+                limpiarFotos(db, 'pareja'),
                 db.prepare('DELETE FROM ligas WHERE slug = ?').bind(slug),
                 limpiarComentarios(db, 'liga')
             ]);
@@ -504,7 +507,12 @@ async function handleLiga(request, db, url, action) {
             // Devuelve los equipos ordenados por clasificación (calculada a partir de los partidos jugados)
             const liga = await validarLiga(db, url.searchParams.get('liga'));
             const [equipos, partidos] = await Promise.all([
-                db.prepare('SELECT id, nombre FROM liga_equipos WHERE liga_nombre = ?').bind(liga).all(),
+                db.prepare(`
+                    SELECT e.id, e.nombre, f.actualizado_en AS foto_v
+                    FROM liga_equipos e
+                    LEFT JOIN fotos f ON f.tipo = 'pareja' AND f.ref_id = e.id
+                    WHERE e.liga_nombre = ?
+                `).bind(liga).all(),
                 db.prepare('SELECT * FROM liga_calendario WHERE liga_nombre = ? AND completado = 1').bind(liga).all()
             ]);
             return json({ success: true, data: calcularClasificacion(equipos.results, partidos.results) });
@@ -542,7 +550,10 @@ async function handleLiga(request, db, url, action) {
                 throw new HttpError(409, 'No se puede eliminar un equipo con partidos en el calendario. Resetea la liga primero.');
             }
 
-            await db.prepare('DELETE FROM liga_equipos WHERE id = ?').bind(equipo.id).run();
+            await db.batch([
+                db.prepare('DELETE FROM liga_equipos WHERE id = ?').bind(equipo.id),
+                limpiarFotos(db, 'pareja')
+            ]);
             return json({ success: true });
         }
 
@@ -648,6 +659,87 @@ async function handleLiga(request, db, url, action) {
             const data = await leerJson(request);
             const liga = await validarLiga(db, data.liga);
             await db.batch([db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(liga), limpiarComentarios(db, 'liga')]);
+            return json({ success: true });
+        }
+
+        default:
+            throw new HttpError(400, 'Acción no válida');
+    }
+}
+
+// =====================================================
+// FOTOS DE PAREJAS Y JUGADORES
+// =====================================================
+// Las sube el administrador. El navegador las recorta y reduce (256x256 JPEG) antes de enviarlas;
+// aquí solo se comprueba que son un JPEG de tamaño razonable y se guardan en base64.
+const MAX_FOTO_BYTES = 150 * 1024;
+const TABLA_FOTOS = { pareja: 'liga_equipos', jugador: 'individual_jugadores' };
+
+function validarTipoFoto(tipo) {
+    if (!Object.hasOwn(TABLA_FOTOS, tipo)) throw new HttpError(400, 'Tipo de foto no válido');
+    return tipo;
+}
+
+// Borra las fotos de parejas o jugadores que ya no existen
+function limpiarFotos(db, tipo) {
+    return db.prepare(`DELETE FROM fotos WHERE tipo = ? AND ref_id NOT IN (SELECT id FROM ${TABLA_FOTOS[tipo]})`).bind(tipo);
+}
+
+// "data:image/jpeg;base64,...." -> base64 validado (JPEG y tamaño)
+function validarImagen(valor) {
+    const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(valor ?? ''));
+    if (!m) throw new HttpError(400, 'La foto tiene que ser una imagen JPEG');
+    let bytes;
+    try {
+        bytes = atob(m[1]);
+    } catch {
+        throw new HttpError(400, 'La foto no es válida');
+    }
+    if (bytes.length > MAX_FOTO_BYTES) throw new HttpError(413, 'La foto es demasiado grande');
+    // Firma de un JPEG: FF D8 FF
+    if (bytes.charCodeAt(0) !== 0xFF || bytes.charCodeAt(1) !== 0xD8 || bytes.charCodeAt(2) !== 0xFF) {
+        throw new HttpError(400, 'La foto tiene que ser una imagen JPEG');
+    }
+    return m[1];
+}
+
+async function handleFotos(request, db, url, action) {
+    switch (action) {
+        case 'ver': {
+            // Imagen JPEG. La URL lleva la versión (?v=...), así que el navegador la puede guardar mucho tiempo
+            const tipo = validarTipoFoto(url.searchParams.get('tipo'));
+            const id = Number(url.searchParams.get('id'));
+            const foto = await db.prepare('SELECT imagen FROM fotos WHERE tipo = ? AND ref_id = ?').bind(tipo, id).first();
+            if (!foto) throw new HttpError(404, 'Sin foto');
+            const bytes = Uint8Array.from(atob(foto.imagen), c => c.charCodeAt(0));
+            return new Response(bytes, {
+                headers: {
+                    'Content-Type': 'image/jpeg',
+                    'Cache-Control': 'public, max-age=31536000, immutable',
+                    'X-Content-Type-Options': 'nosniff'
+                }
+            });
+        }
+
+        case 'subir': {
+            const data = await leerJson(request);
+            const tipo = validarTipoFoto(data.tipo);
+            const id = Number(data.id);
+            const existe = await db.prepare(`SELECT 1 FROM ${TABLA_FOTOS[tipo]} WHERE id = ?`).bind(id).first();
+            if (!existe) throw new HttpError(404, tipo === 'pareja' ? 'Pareja no encontrada' : 'Jugador no encontrado');
+            const imagen = validarImagen(data.imagen);
+            const version = Date.now();
+            await db.prepare(`
+                INSERT INTO fotos (tipo, ref_id, imagen, actualizado_en) VALUES (?, ?, ?, ?)
+                ON CONFLICT(tipo, ref_id) DO UPDATE SET imagen = excluded.imagen, actualizado_en = excluded.actualizado_en
+            `).bind(tipo, id, imagen, version).run();
+            return json({ success: true, foto_v: version });
+        }
+
+        case 'borrar': {
+            const data = await leerJson(request);
+            const tipo = validarTipoFoto(data.tipo);
+            await db.prepare('DELETE FROM fotos WHERE tipo = ? AND ref_id = ?').bind(tipo, Number(data.id)).run();
             return json({ success: true });
         }
 
@@ -813,7 +905,12 @@ const JORNADAS_INDIVIDUAL = 10;
 
 async function estadoIndividual(db) {
     const [jugadores, partidos, config] = await Promise.all([
-        db.prepare('SELECT id, nombre, orden FROM individual_jugadores ORDER BY orden, id').all(),
+        db.prepare(`
+            SELECT j.id, j.nombre, j.orden, f.actualizado_en AS foto_v
+            FROM individual_jugadores j
+            LEFT JOIN fotos f ON f.tipo = 'jugador' AND f.ref_id = j.id
+            ORDER BY j.orden, j.id
+        `).all(),
         db.prepare(`
             SELECT p.*,
                    l1.nombre AS local1, l2.nombre AS local2,
@@ -843,7 +940,7 @@ async function estadoIndividual(db) {
 // Orden: puntos, diferencia de sets, diferencia de juegos, sets a favor y, por último, el orden inicial.
 function clasificacionIndividual(jugadores, partidos) {
     const stats = new Map(jugadores.map(j => [j.id, {
-        id: j.id, nombre: j.nombre, orden: j.orden,
+        id: j.id, nombre: j.nombre, orden: j.orden, foto_v: j.foto_v ?? null,
         pj: 0, pg: 0, pp1: 0, pp0: 0, puntos: 0,
         sets_favor: 0, sets_contra: 0, juegos_favor: 0, juegos_contra: 0
     }]));
@@ -954,7 +1051,10 @@ async function handleIndividual(request, db, action) {
             const data = await leerJson(request);
             const jugador = await obtenerJugador(db, data.id);
             exigirNoEmpezada(await estadoIndividual(db));
-            await db.prepare('DELETE FROM individual_jugadores WHERE id = ?').bind(jugador.id).run();
+            await db.batch([
+                db.prepare('DELETE FROM individual_jugadores WHERE id = ?').bind(jugador.id),
+                limpiarFotos(db, 'jugador')
+            ]);
             return json({ success: true });
         }
 

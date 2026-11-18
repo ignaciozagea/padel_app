@@ -421,3 +421,79 @@ body.ui-ocupado { cursor: progress; }
 @media (max-width: 480px) {
     .form-comentario-fila { flex-direction: column; }
 }
+
+/* ---------- Avatares: foto o iniciales de color (js/ui.js) ---------- */
+.avatar {
+    --tono: 200;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 50%;
+    background: hsl(var(--tono) 42% 30%);
+    color: hsl(var(--tono) 85% 88%);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    vertical-align: middle;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
+}
+
+.avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-xs { width: 1.4rem;  height: 1.4rem;  font-size: 0.55rem; }
+.avatar-sm { width: 1.85rem; height: 1.85rem; font-size: 0.68rem; }
+.avatar-md { width: 2.4rem;  height: 2.4rem;  font-size: 0.85rem; }
+.avatar-lg { width: 3.6rem;  height: 3.6rem;  font-size: 1.2rem; }
+.avatar-xl { width: 7rem;    height: 7rem;    font-size: 2.2rem; }
+
+/* Dos avatares solapados (pareja de la liga individual) */
+.avatares { display: inline-flex; flex-shrink: 0; }
+.avatares .avatar + .avatar { margin-left: -0.25rem; }
+
+/* Nombre con avatar delante */
+.con-avatar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.con-avatar > :last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Cabecera de la ficha con la foto grande */
+.ficha-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ficha-cabecera strong { display: block; font-size: 1.1rem; }
+.ficha-cabecera span.sub { font-size: 0.85rem; color: #94a3b8; }
+
+/* Ventana para poner la foto */
+.foto-editor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+}
+
+.foto-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+.foto-botones [hidden] { display: none; }

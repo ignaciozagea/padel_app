@@ -163,9 +163,13 @@ function validarResultado(sets, { superTiebreak = false } = {}) {
     return { setsLocal, setsVisitante, haySet3 };
 }
 
+// Escapa texto para meterlo en HTML, también dentro de atributos (por eso escapa las comillas)
 function escapeHtml(text) {
     if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

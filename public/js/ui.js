@@ -269,3 +269,119 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
         navigator.serviceWorker.register('/sw.js').catch(e => console.warn('Service worker no registrado:', e));
     });
 }
+
+// ---------- Avatares: foto o iniciales de color ----------
+// "García/López" -> "GL"; "Ana Martín" -> "AM"; "Ana" -> "A"
+function iniciales(nombre) {
+    const texto = String(nombre || '').trim();
+    const partes = texto.includes('/') ? texto.split('/') : texto.split(/\s+/);
+    const letras = partes
+        .map(p => (p.trim().match(/[\p{L}\p{N}]/u) || [''])[0])
+        .filter(Boolean)
+        .slice(0, 2);
+    return (letras.join('') || '?').toUpperCase();
+}
+
+// Color estable para cada nombre (siempre el mismo tono)
+function tonoDe(nombre) {
+    let h = 0;
+    for (const c of String(nombre)) h = (h * 31 + c.codePointAt(0)) % 360;
+    return h;
+}
+
+// Círculo con las iniciales y, si hay foto, la foto encima (si la foto no carga, se ven las iniciales).
+// tipo/id/fotoV: 'pareja' | 'jugador', su id y la versión de la foto (null si no tiene)
+function avatar(nombre, { tipo, id, fotoV, tam = 'md' } = {}) {
+    const foto = fotoV && tipo && id
+        ? `<img src="/api/fotos?action=ver&tipo=${encodeURIComponent(tipo)}&id=${Number(id)}&v=${Number(fotoV)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
+        : '';
+    return `<span class="avatar avatar-${tam}" style="--tono: ${tonoDe(nombre)}" aria-hidden="true"><span>${escapeHtml(iniciales(nombre))}</span>${foto}</span>`;
+}
+
+// ---------- Fotos (solo administrador) ----------
+// Recorta la imagen en cuadrado por el centro y la reduce a 256x256 JPEG (unos 20-40 KB)
+async function prepararFoto(archivo, lado = 256) {
+    const imagen = await createImageBitmap(archivo);   // respeta la orientación de las fotos del móvil
+    const corte = Math.min(imagen.width, imagen.height);
+    const lienzo = document.createElement('canvas');
+    lienzo.width = lienzo.height = lado;
+    const ctx = lienzo.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(imagen, (imagen.width - corte) / 2, (imagen.height - corte) / 2, corte, corte, 0, 0, lado, lado);
+    imagen.close?.();
+    for (const calidad of [0.85, 0.75, 0.6, 0.5]) {
+        const url = lienzo.toDataURL('image/jpeg', calidad);
+        if (url.length * 0.75 < 120 * 1024) return url;
+    }
+    return lienzo.toDataURL('image/jpeg', 0.4);
+}
+
+// Ventana para poner, cambiar o quitar la foto de una pareja o jugador.
+// Devuelve true si ha cambiado algo (para recargar la página).
+async function gestionarFoto({ tipo, id, nombre, fotoV }) {
+    let cambiado = false;
+    let preparada = null;
+    const quien = tipo === 'pareja' ? 'la pareja' : 'el jugador';
+
+    await abrirVentana({
+        titulo: `Foto de ${nombre}`,
+        iconoTitulo: 'camara',
+        ancho: 420,
+        html: `
+            <div class="foto-editor">
+                <div class="foto-vista">${avatar(nombre, { tipo, id, fotoV, tam: 'xl' })}</div>
+                <input type="file" accept="image/*" class="foto-archivo" hidden>
+                <div class="foto-botones">
+                    <button type="button" class="btn btn-secondary btn-sm foto-elegir">${icono('camara')}Elegir foto</button>
+                    <button type="button" class="btn btn-danger btn-sm foto-quitar" ${fotoV ? '' : 'hidden'}>${icono('papelera')}Quitar foto</button>
+                </div>
+                <p class="info-text" style="margin: 0;">Se recorta en cuadrado y se reduce automáticamente.
+                    La web es pública: sube la foto solo si ${quien} está de acuerdo.</p>
+            </div>`,
+        botones: [
+            { texto: 'Cancelar', valor: null },
+            {
+                texto: 'Guardar foto', icono: 'check', clase: 'btn-primary',
+                alPulsar: async () => {
+                    if (!preparada) {
+                        notificar('Elige primero una foto', 'error');
+                        return false;
+                    }
+                    const ok = await enviarAccion('/api/fotos?action=subir', { tipo, id, imagen: preparada }, {
+                        ok: 'Foto guardada', error: 'No se ha podido guardar la foto'
+                    });
+                    if (!ok) return false;
+                    cambiado = true;
+                }
+            }
+        ],
+        alAbrir: ventana => {
+            const archivo = ventana.querySelector('.foto-archivo');
+            const vista = ventana.querySelector('.foto-vista');
+            ventana.querySelector('.foto-elegir').addEventListener('click', () => archivo.click());
+            archivo.addEventListener('change', async () => {
+                const elegido = archivo.files[0];
+                if (!elegido) return;
+                try {
+                    preparada = await prepararFoto(elegido);
+                    vista.innerHTML = `<span class="avatar avatar-xl"><img src="${preparada}" alt="Vista previa de la foto"></span>`;
+                } catch (error) {
+                    console.error('Error preparando la foto:', error);
+                    preparada = null;
+                    notificar('No se ha podido leer esa imagen. Prueba con otra (JPG o PNG).', 'error');
+                }
+            });
+            ventana.querySelector('.foto-quitar').addEventListener('click', async () => {
+                if (!await confirmar(`¿Quitar la foto de ${nombre}?`, { titulo: 'Quitar foto', textoAceptar: 'Quitar', iconoAceptar: 'papelera', peligro: true })) return;
+                const ok = await enviarAccion('/api/fotos?action=borrar', { tipo, id }, { ok: 'Foto quitada', error: 'No se ha podido quitar' });
+                if (ok) {
+                    cambiado = true;
+                    preparada = null;
+                    vista.innerHTML = avatar(nombre, { tam: 'xl' });
+                    ventana.querySelector('.foto-quitar').hidden = true;
+                }
+            });
+        }
+    });
+    return cambiado;
+}

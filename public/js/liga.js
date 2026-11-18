@@ -241,8 +241,9 @@
         const porNombre = [...equipos].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
         container.innerHTML = porNombre.map(equipo => `
             <div class="team-tag">
-                <span>${escapeHtml(equipo.nombre)}</span>
+                <span class="con-avatar">${avatar(equipo.nombre, { tipo: 'pareja', id: equipo.id, fotoV: equipo.foto_v, tam: 'xs' })}<span>${escapeHtml(equipo.nombre)}</span></span>
                 ${isAdmin ? `
+                    <button class="btn-ico" title="Foto" aria-label="Foto de la pareja" onclick="fotoPareja(${Number(equipo.id)})">${icono('camara')}</button>
                     <button class="btn-ico" title="Cambiar nombre" aria-label="Cambiar nombre de la pareja" onclick="renombrarEquipo(${Number(equipo.id)})">${icono('editar')}</button>
                     <button class="btn-ico peligro" title="Eliminar" aria-label="Eliminar la pareja" onclick="eliminarEquipo(${Number(equipo.id)})">${icono('papelera')}</button>
                 ` : ''}
@@ -379,7 +380,7 @@
 
         return `
             <div class="marcador-fila ${ganador ? 'ganador' : ''}">
-                <button class="ui-enlace nombre" onclick="verPareja(${Number(id)})">${escapeHtml(nombre)}</button>
+                <span class="con-avatar nombre">${avatarPareja(id, nombre, 'xs')}<button class="ui-enlace" onclick="verPareja(${Number(id)})">${escapeHtml(nombre)}</button></span>
                 <span class="juegos">${juegos.join('')}</span>
                 <span class="puntos">${puntos === null ? '' : `${puntos} pt${puntos === 1 ? '' : 's'}`}</span>
             </div>`;
@@ -613,7 +614,7 @@
             html += `
                 <tr>
                     <td><span class="pos ${idx < 3 ? `pos-${idx + 1}` : ''}">${idx + 1}</span></td>
-                    <td><button class="ui-enlace" title="Ver partidos" onclick="verPareja(${Number(equipo.id)})">${escapeHtml(equipo.nombre)}</button></td>
+                    <td><span class="con-avatar">${avatarPareja(equipo.id, equipo.nombre, 'sm')}<button class="ui-enlace" title="Ver partidos" onclick="verPareja(${Number(equipo.id)})">${escapeHtml(equipo.nombre)}</button></span></td>
                     <td>${equipo.pj || 0}</td>
                     <td>${equipo.pg || 0}</td>
                     <td>${equipo.pp1 || 0}</td>
@@ -631,6 +632,21 @@
             diferencia de sets, diferencia de juegos y sets a favor.
         </p>`;
         container.innerHTML = html;
+    }
+
+    // ==================== FOTOS ====================
+    // Avatar de una pareja: su foto o sus iniciales de color
+    function avatarPareja(id, nombre, tam) {
+        const equipo = equipos.find(e => e.id === id);
+        return avatar(nombre, { tipo: 'pareja', id, fotoV: equipo?.foto_v, tam });
+    }
+
+    async function fotoPareja(id) {
+        const equipo = equipos.find(e => e.id === id);
+        if (!isAdmin || !equipo) return;
+        if (await gestionarFoto({ tipo: 'pareja', id, nombre: equipo.nombre, fotoV: equipo.foto_v })) {
+            await recargar();
+        }
     }
 
     // ==================== FICHA DE PAREJA ====================
@@ -681,6 +697,10 @@
             </div>`;
 
         const html = `
+            <div class="ficha-cabecera">
+                ${avatarPareja(equipo.id, equipo.nombre, 'lg')}
+                <div><strong>${escapeHtml(equipo.nombre)}</strong><span class="sub">${posicion}º · ${equipo.puntos} puntos</span></div>
+            </div>
             <div class="pareja-stats">
                 ${stat(`${posicion}º`, 'Posición')}
                 ${stat(equipo.puntos, 'Puntos')}
@@ -707,7 +727,7 @@
         `;
 
         abrirVentana({
-            titulo: equipo.nombre,
+            titulo: 'Ficha de la pareja',
             iconoTitulo: 'pareja',
             html,
             ancho: 560,
@@ -780,6 +800,7 @@
     window.cancelarEdicion = cancelarEdicion;
     window.anularResultado = anularResultado;
     window.verPareja = verPareja;
+    window.fotoPareja = fotoPareja;
     window.compartirJornada = compartirJornada;
     window.renombrarLiga = renombrarLiga;
     window.eliminarLiga = eliminarLiga;

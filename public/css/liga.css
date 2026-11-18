@@ -278,4 +278,9 @@
     .standings-table td:nth-child(2) { white-space: normal; width: auto; }
     .standings-table th, .standings-table td { padding: 0.5rem 0.25rem; }
     .standings-table th:nth-child(1), .standings-table td:nth-child(1) { width: 2rem; }
+
+    /* Foto más pequeña y nombres en dos líneas si hace falta: la tabla cabe sin desplazar */
+    .standings-table .con-avatar { gap: 0.35rem; }
+    .standings-table .avatar-sm { width: 1.4rem; height: 1.4rem; font-size: 0.55rem; }
+    .standings-table .con-avatar > :last-child { white-space: normal; overflow-wrap: anywhere; text-align: left; }
 }
