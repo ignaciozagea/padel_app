@@ -49,3 +49,30 @@ test('súper tie-break en el tercer set (misma regla que el servidor)', () => {
     // Sin la opción, 10-8 en el tercer set no vale
     assert.ok(validar([[6, 4], [3, 6], [10, 8]]).error);
 });
+
+test('escapeHtml protege también dentro de atributos', () => {
+    assert.equal(ctx.escapeHtml('<b>"Ana" & \'Bea\'</b>'), '&lt;b&gt;&quot;Ana&quot; &amp; &#39;Bea&#39;&lt;/b&gt;');
+    assert.equal(ctx.escapeHtml(null), '');
+    assert.equal(ctx.escapeHtml(0), '0');
+});
+
+test('avatares: iniciales y color estable (js/ui.js)', () => {
+    // ui.js depende de api.js; se cargan los dos en un contexto con lo mínimo del navegador
+    const ui = vm.createContext({ sessionStorage: ctx.sessionStorage, navigator: {}, window: {} });
+    vm.runInContext(codigo, ui);
+    vm.runInContext(readFileSync(new URL('../public/js/ui.js', import.meta.url), 'utf8'), ui);
+
+    assert.equal(ui.iniciales('García/López'), 'GL');
+    assert.equal(ui.iniciales('Ana Martín Ruiz'), 'AM');
+    assert.equal(ui.iniciales('Ángela'), 'Á');
+    assert.equal(ui.iniciales('  '), '?');
+    assert.equal(ui.tonoDe('Ana'), ui.tonoDe('Ana'), 'el mismo nombre, el mismo color');
+
+    const sinFoto = ui.avatar('Ana/Bea', { tipo: 'pareja', id: 3, fotoV: null, tam: 'sm' });
+    assert.match(sinFoto, /avatar-sm/);
+    assert.match(sinFoto, />AB</);
+    assert.doesNotMatch(sinFoto, /<img/);
+    const conFoto = ui.avatar('Ana/Bea', { tipo: 'pareja', id: 3, fotoV: 123 });
+    assert.ok(conFoto.includes('<img src="/api/fotos?action=ver&tipo=pareja&id=3&v=123"'), conFoto);
+    assert.ok(!ui.avatar('<script>').includes('<script'), 'las iniciales solo toman letras y números');
+});

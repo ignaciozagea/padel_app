@@ -294,7 +294,7 @@
         const puedeEliminar = isAdmin && !cuadroActualGenerado;
         container.innerHTML = equiposTorneo.map(equipo => `
             <div class="team-tag">
-                <span>${escapeHtml(equipo.nombre)}</span>
+                <span class="con-avatar">${avatar(equipo.nombre, { tam: 'xs' })}<span>${escapeHtml(equipo.nombre)}</span></span>
                 ${isAdmin ? `<button class="btn-ico" title="Cambiar nombre" aria-label="Cambiar nombre de la pareja" onclick="renombrarEquipo(${Number(equipo.id)})">${icono('editar')}</button>` : ''}
                 ${puedeEliminar ? `<button class="btn-ico peligro" title="Eliminar" aria-label="Quitar la pareja" onclick="eliminarEquipo(${Number(equipo.id)})">${icono('papelera')}</button>` : ''}
             </div>
@@ -392,7 +392,7 @@
             const texto = nombre || (esBye ? 'Descanso' : 'Por decidir');
             return `
                 <div class="match-fila ${ganador ? 'ganador' : ''} ${nombre ? '' : 'vacia'}">
-                    <span class="nombre">${ganador ? icono('check') : ''}${escapeHtml(texto)}</span>
+                    <span class="nombre">${ganador ? icono('check') : ''}${nombre ? avatar(nombre, { tam: 'xs' }) : ''}<span class="texto-nombre">${escapeHtml(texto)}</span></span>
                     <span class="juegos">${sets.map(s => `<span class="juego ${s[lado] > s[otro] ? 'gana' : ''}">${Number(s[lado])}</span>`).join('')}</span>
                 </div>`;
         };

@@ -29,6 +29,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **Clasificación automática con desempates**: Puntos → enfrentamiento directo (empate entre dos) → diferencia de sets → diferencia de juegos → sets a favor
 - ✅ **Torneo eliminación directa**: Octavos → Cuartos → Semifinal → Final
 - ✅ **Liga individual**: Cada jugador puntúa por su cuenta y las parejas cambian cada jornada: en cada grupo de 4 de la clasificación, el 1º y el 3º juegan contra el 2º y el 4º (jornada 1 con el orden que fija el administrador). 10 jornadas, jugadores en múltiplos de 4
+- ✅ **Fotos y avatares**: El administrador pone una foto a cada pareja (liga) y a cada jugador (liga individual); el móvil la recorta y la reduce (256 px, unos 10-40 KB) antes de subirla. Sin foto, y en el torneo y los comentarios, se muestran las iniciales en un círculo de color
 - ✅ **Comentarios en cada partido**: Los jugadores comentan con un código que el administrador fija en la portada y comparte en el grupo. Cada partido muestra el número de comentarios y el último; el administrador puede borrarlos
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
@@ -138,7 +139,8 @@ padel_app/
 |   ├──📄 0006_super_tiebreak.sql
 |   ├──📄 0007_nombres_ligas_sin_emoji.sql
 |   ├──📄 0008_liga_individual.sql
-|   └──📄 0009_comentarios.sql
+|   ├──📄 0009_comentarios.sql
+|   └──📄 0010_fotos.sql
 |
 ├──📁 docs/capturas/          # Capturas de pantalla del README (no se publican)
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
@@ -164,6 +166,7 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 | `individual_config` | Opciones de la liga individual (súper tie-break) |
 | `comentarios` | Comentarios de los partidos (de la liga, la liga individual y el torneo) |
 | `ajustes` | Ajustes generales, como el código de jugadores para comentar |
+| `fotos` | Fotos de las parejas y los jugadores (JPEG 256x256 en base64) |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas (`equipo1_id`, `equipo2_id`, `ganador_id`) |
 | `login_intentos` | Intentos fallidos de login por IP |
@@ -186,6 +189,8 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 | `/api/comentarios` | `getConteo` (número y último comentario de cada partido), `getComentarios` | GET | ❌ |
 | `/api/comentarios` | `comentar` (con el código de jugadores, o como administrador) | POST | — |
 | `/api/comentarios` | `getCodigo`, `configurarCodigo`, `borrarComentario` | POST | ✅ |
+| `/api/fotos` | `ver` (imagen JPEG; la URL lleva la versión, se guarda en caché) | GET | ❌ |
+| `/api/fotos` | `subir`, `borrar` | POST | ✅ |
 | `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `configurarTorneo`, `resetTorneo` | POST | ✅ |
 
 La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo. `getEquipos` devuelve los equipos ya ordenados por clasificación. `resetTorneo` borra solo el torneo actual; el historial se conserva.

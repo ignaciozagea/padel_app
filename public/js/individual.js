@@ -75,12 +75,13 @@
         lista.innerHTML = jugadores.map((j, i) => `
             <li>
                 <span class="num">${i + 1}º</span>
-                <span class="nombre-jugador">${escapeHtml(j.nombre)}</span>
+                <span class="nombre-jugador con-avatar">${avatarJugador(j.id, j.nombre, 'xs')}<span>${escapeHtml(j.nombre)}</span></span>
                 ${bloqueado ? '' : `
                     <button class="btn-ico" title="Subir" aria-label="Subir a ${escapeHtml(j.nombre)}" ${i === 0 ? 'disabled' : ''}
                             onclick="moverJugador(${Number(j.id)}, -1)">${icono('subir')}</button>
                     <button class="btn-ico" title="Bajar" aria-label="Bajar a ${escapeHtml(j.nombre)}" ${i === jugadores.length - 1 ? 'disabled' : ''}
                             onclick="moverJugador(${Number(j.id)}, 1)">${icono('desplegar')}</button>`}
+                <button class="btn-ico" title="Foto" aria-label="Foto de ${escapeHtml(j.nombre)}" onclick="fotoJugador(${Number(j.id)})">${icono('camara')}</button>
                 <button class="btn-ico" title="Cambiar nombre" aria-label="Cambiar nombre" onclick="renombrarJugador(${Number(j.id)})">${icono('editar')}</button>
                 ${bloqueado ? '' : `<button class="btn-ico peligro" title="Eliminar" aria-label="Eliminar a ${escapeHtml(j.nombre)}" onclick="eliminarJugador(${Number(j.id)})">${icono('papelera')}</button>`}
             </li>
@@ -261,7 +262,7 @@
                     ${tabla.map((j, idx) => `
                         <tr>
                             <td><span class="pos ${idx < 3 && estado.empezada ? `pos-${idx + 1}` : ''}">${idx + 1}</span></td>
-                            <td><button class="ui-enlace" title="Ver partidos" onclick="verJugador(${Number(j.id)})">${escapeHtml(j.nombre)}</button></td>
+                            <td><span class="con-avatar">${avatarJugador(j.id, j.nombre, 'sm')}<button class="ui-enlace" title="Ver partidos" onclick="verJugador(${Number(j.id)})">${escapeHtml(j.nombre)}</button></span></td>
                             <td>${j.pj}</td>
                             <td>${j.pg}</td>
                             <td>${j.pp1}</td>
@@ -353,11 +354,11 @@
     }
 
     function nombrePareja(id1, nombre1, id2, nombre2) {
-        return `<span class="pareja">`
+        return `<span class="con-avatar"><span class="avatares">${avatarJugador(id1, nombre1, 'xs')}${avatarJugador(id2, nombre2, 'xs')}</span><span class="pareja">`
             + `<button class="ui-enlace" onclick="verJugador(${Number(id1)})">${escapeHtml(nombre1)}</button>`
             + `<span class="separador">/</span>`
             + `<button class="ui-enlace" onclick="verJugador(${Number(id2)})">${escapeHtml(nombre2)}</button>`
-            + `</span>`;
+            + `</span></span>`;
     }
 
     function filaMarcador(p, lado, sets) {
@@ -500,6 +501,21 @@
         }
     }
 
+    // ==================== FOTOS ====================
+    // Avatar de un jugador: su foto o sus iniciales de color
+    function avatarJugador(id, nombre, tam) {
+        const jugador = estado?.jugadores.find(j => j.id === id);
+        return avatar(nombre, { tipo: 'jugador', id, fotoV: jugador?.foto_v, tam });
+    }
+
+    async function fotoJugador(id) {
+        const jugador = estado.jugadores.find(j => j.id === id);
+        if (!isAdmin || !jugador) return;
+        if (await gestionarFoto({ tipo: 'jugador', id, nombre: jugador.nombre, fotoV: jugador.foto_v })) {
+            await cargar();
+        }
+    }
+
     // ==================== FICHA DE JUGADOR ====================
     function partidosDeJugador(id) {
         return estado.partidos
@@ -548,10 +564,14 @@
             </div>`;
 
         abrirVentana({
-            titulo: j.nombre,
+            titulo: 'Ficha del jugador',
             iconoTitulo: 'pareja',
             ancho: 580,
             html: `
+                <div class="ficha-cabecera">
+                    ${avatarJugador(j.id, j.nombre, 'lg')}
+                    <div><strong>${escapeHtml(j.nombre)}</strong><span class="sub">${j.posicion}º · ${j.puntos} puntos</span></div>
+                </div>
                 <div class="pareja-stats">
                     ${stat(`${j.posicion}º`, 'Posición')}
                     ${stat(j.puntos, 'Puntos')}
@@ -642,6 +662,7 @@
     window.guardarResultado = guardarResultado;
     window.anularResultado = anularResultado;
     window.verJugador = verJugador;
+    window.fotoJugador = fotoJugador;
     window.compartirJornada = compartirJornada;
 
     init();

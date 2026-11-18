@@ -379,3 +379,7 @@
 .match-pie .btn-play + .zona-comentarios,
 .match-pie .btn-edit-match + .zona-comentarios { margin-left: 0.3rem; }
 .match-pie .estado + .zona-comentarios { margin-left: auto; }
+
+/* Nombre en el cuadro con las iniciales de la pareja */
+.match-fila .nombre .avatar { margin-right: 0.1rem; }
+.match-fila .nombre .texto-nombre { overflow: hidden; text-overflow: ellipsis; }

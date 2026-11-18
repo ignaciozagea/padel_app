@@ -120,6 +120,7 @@ async function cargarHilo(ventana, partidoId) {
             ? comentarios.map(c => `
                 <div class="comentario">
                     <div class="comentario-cabecera">
+                        ${avatar(c.autor, { tam: 'sm' })}
                         <strong>${escapeHtml(c.autor)}</strong>
                         <span class="fecha" title="${new Date(c.creado_en).toLocaleString('es-ES')}">${haceCuanto(c.creado_en)}</span>
                         ${esAdmin() ? `<button class="btn-ico peligro" title="Borrar comentario" aria-label="Borrar comentario"

@@ -65,14 +65,20 @@ export function crearApp() {
     const env = { DB: crearD1(sqlite), ADMIN_PASSWORD: PASSWORD };
     let token = null;
 
-    async function call(path, { method = 'GET', body, auth = true, ip = '10.0.0.1' } = {}) {
+    // Respuesta tal cual (p. ej. imágenes)
+    async function raw(path, { method = 'GET', body, auth = true, ip = '10.0.0.1' } = {}) {
         const headers = { 'CF-Connecting-IP': ip };
         if (body !== undefined) headers['Content-Type'] = 'application/json';
         if (auth && token) headers.Authorization = `Bearer ${token}`;
         const request = new Request(`http://test/api/${path}`, {
             method, headers, body: body !== undefined ? JSON.stringify(body) : undefined
         });
-        const res = await onRequest({ request, env });
+        return onRequest({ request, env });
+    }
+
+    // Respuesta JSON con el estado y las cabeceras
+    async function call(path, opciones = {}) {
+        const res = await raw(path, opciones);
         return {
             status: res.status,
             retryAfter: res.headers.get('Retry-After'),
@@ -84,6 +90,7 @@ export function crearApp() {
     return {
         sqlite,
         call,
+        raw,
         post: (path, body = {}) => call(path, { method: 'POST', body }),
         async login() {
             const r = await call('login', { method: 'POST', body: { password: PASSWORD }, ip: '10.0.0.99' });
