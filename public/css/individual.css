@@ -1,0 +1,85 @@
+/* ==================== LIGA INDIVIDUAL ====================
+   Reutiliza los estilos de liga.css (clasificación, jornadas, marcadores) y añade lo propio. */
+
+/* Lista ordenada de jugadores (el orden es el de la jornada 1) */
+.lista-orden {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 1rem 0;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.lista-orden li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.35rem 0.3rem 0.5rem;
+    background: rgba(56, 189, 248, 0.06);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.lista-orden .num {
+    min-width: 1.8rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--texto-suave);
+}
+
+.lista-orden .nombre-jugador {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.lista-orden .btn-ico:disabled { opacity: 0.25; cursor: default; }
+.lista-orden .btn-ico:disabled:hover { background: none; }
+
+.estado-liga {
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.estado-liga small {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+}
+
+.progreso-liga {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--texto-suave);
+}
+
+/* En el marcador de la liga individual cada fila tiene dos jugadores */
+.marcador-fila .pareja {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--texto-suave);
+}
+
+.marcador-fila.ganador .pareja { color: var(--texto); }
+.marcador-fila .pareja .separador { margin: 0 0.3rem; opacity: 0.5; }
+
+/* Grupo de cada partido (1º-4º, 5º-8º...) */
+.partido .grupo {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+}

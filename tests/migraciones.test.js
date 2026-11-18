@@ -7,7 +7,7 @@ test('las migraciones se aplican sobre una base de datos vacía', () => {
     for (const m of MIGRACIONES) aplicarMigracion(db, m);
     const tablas = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
         .all().map(t => t.name);
-    assert.deepEqual(tablas, ['liga_calendario', 'liga_equipos', 'ligas', 'login_intentos', 'torneo', 'torneo_equipos', 'torneo_partidos']);
+    assert.deepEqual(tablas, ['individual_config', 'individual_jugadores', 'individual_partidos', 'liga_calendario', 'liga_equipos', 'ligas', 'login_intentos', 'torneo', 'torneo_equipos', 'torneo_partidos']);
     const columnasTorneo = db.prepare('PRAGMA table_info(torneo)').all().map(c => c.name);
     assert.deepEqual(columnasTorneo, ['id', 'estado', 'nombre', 'creado_en', 'finalizado_en', 'super_tiebreak']);
 });

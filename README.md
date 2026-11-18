@@ -28,6 +28,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **Sistema de puntuación 3/1/0**: Victoria 3 pts, Derrota 2-1 → 1 pt, Derrota 2-0 → 0 pts
 - ✅ **Clasificación automática con desempates**: Puntos → enfrentamiento directo (empate entre dos) → diferencia de sets → diferencia de juegos → sets a favor
 - ✅ **Torneo eliminación directa**: Octavos → Cuartos → Semifinal → Final
+- ✅ **Liga individual**: Cada jugador puntúa por su cuenta y las parejas cambian cada jornada: en cada grupo de 4 de la clasificación, el 1º y el 3º juegan contra el 2º y el 4º (jornada 1 con el orden que fija el administrador). 10 jornadas, jugadores en múltiplos de 4
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
 - ✅ **Historial de torneos**: Los torneos terminados se archivan con su campeón y subcampeón y se puede consultar su cuadro
@@ -74,6 +75,10 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 |:---:|:---:|
 | ![Gestión del torneo](./docs/capturas/gestion_torneo.png) | <img src="./docs/capturas/movil.png" alt="Móvil" width="260"> |
 
+| Liga individual |
+|:---:|
+| ![Liga individual](./docs/capturas/individual.png) |
+
 </div>
 <br>
 
@@ -99,18 +104,21 @@ padel_app/
 |   ├──📄 index.html          # Página principal (login + navegación)
 |   ├──📄 liga.html           # Gestión de ligas
 |   ├──📄 torneo.html         # Gestión de torneos
+|   ├──📄 individual.html     # Liga individual
 |   ├──📁 js/
 |   |   ├──📄 api.js          # Sesión, llamadas a la API y validación (compartido)
 |   |   ├──📄 ui.js           # Iconos, avisos, ventanas, carga y compartir (compartido)
 |   |   ├──📄 index.js
 |   |   ├──📄 liga.js
-|   |   └──📄 torneo.js
+|   |   ├──📄 torneo.js
+|   |   └──📄 individual.js
 |   ├──📁 css/
 |   |   ├──📄 base.css        # Diseño común: barra de navegación, tarjetas, botones, iconos
 |   |   ├──📄 comun.css       # Avisos, ventanas, ficha de pareja
 |   |   ├──📄 index.css
 |   |   ├──📄 liga.css
-|   |   └──📄 torneo.css
+|   |   ├──📄 torneo.css
+|   |   └──📄 individual.css
 |   ├──📁 img/                # iconos.svg (iconos de la interfaz) e icons/ (iconos de la app)
 |   ├──📄 manifest.webmanifest # Datos para instalar la web como app
 |   └──📄 sw.js               # Service worker: funcionamiento sin conexión
@@ -126,7 +134,8 @@ padel_app/
 |   ├──📄 0004_historial_torneos.sql
 |   ├──📄 0005_ligas.sql
 |   ├──📄 0006_super_tiebreak.sql
-|   └──📄 0007_nombres_ligas_sin_emoji.sql
+|   ├──📄 0007_nombres_ligas_sin_emoji.sql
+|   └──📄 0008_liga_individual.sql
 |
 ├──📁 docs/capturas/          # Capturas de pantalla del README (no se publican)
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
@@ -147,6 +156,9 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 | `liga_equipos` | Equipos participantes en cada liga |
 | `liga_calendario` | Partidos y resultados de las ligas (`local_id`, `visitante_id`) |
 | `torneo` | Torneos: el actual (`configuracion` / `activo`) y los archivados en el historial |
+| `individual_jugadores` | Jugadores de la liga individual y su orden inicial |
+| `individual_partidos` | Partidos de la liga individual (cuatro jugadores por partido) |
+| `individual_config` | Opciones de la liga individual (súper tie-break) |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas (`equipo1_id`, `equipo2_id`, `ganador_id`) |
 | `login_intentos` | Intentos fallidos de login por IP |
@@ -164,6 +176,8 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 | `/api/liga` | `getLigas`, `getEquipos`, `getCalendario` | GET | ❌ |
 | `/api/liga` | `crearLiga`, `renombrarLiga`, `eliminarLiga`, `configurarLiga`, `addEquipo`, `renameEquipo`, `deleteEquipo`, `generarCalendario`, `guardarResultado`, `anularResultado`, `resetLiga` | POST | ✅ |
 | `/api/torneo` | `getTorneo` (con `&id=` para un torneo del historial), `getHistorial` | GET | ❌ |
+| `/api/individual` | `getEstado` (jugadores, clasificación y jornadas) | GET | ❌ |
+| `/api/individual` | `addJugador`, `renameJugador`, `deleteJugador`, `ordenarJugadores`, `generarJornada`, `deshacerJornada`, `guardarResultado`, `anularResultado`, `resetIndividual`, `configurar` | POST | ✅ |
 | `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `configurarTorneo`, `resetTorneo` | POST | ✅ |
 
 La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo. `getEquipos` devuelve los equipos ya ordenados por clasificación. `resetTorneo` borra solo el torneo actual; el historial se conserva.

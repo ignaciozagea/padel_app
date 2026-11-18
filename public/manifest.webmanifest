@@ -17,6 +17,7 @@
   ],
   "shortcuts": [
     { "name": "Liga", "short_name": "Liga", "url": "/liga", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Liga individual", "short_name": "Individual", "url": "/individual", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Torneo", "short_name": "Torneo", "url": "/torneo", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
