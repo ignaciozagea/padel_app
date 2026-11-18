@@ -29,6 +29,7 @@ El frontend es HTML/CSS/JavaScript estático y el backend es una API serverless 
 - ✅ **Clasificación automática con desempates**: Puntos → enfrentamiento directo (empate entre dos) → diferencia de sets → diferencia de juegos → sets a favor
 - ✅ **Torneo eliminación directa**: Octavos → Cuartos → Semifinal → Final
 - ✅ **Liga individual**: Cada jugador puntúa por su cuenta y las parejas cambian cada jornada: en cada grupo de 4 de la clasificación, el 1º y el 3º juegan contra el 2º y el 4º (jornada 1 con el orden que fija el administrador). 10 jornadas, jugadores en múltiplos de 4
+- ✅ **Comentarios en cada partido**: Los jugadores comentan con un código que el administrador fija en la portada y comparte en el grupo. Cada partido muestra el número de comentarios y el último; el administrador puede borrarlos
 - ✅ **Sorteo aleatorio con descansos**: Admite cualquier número de equipos; los descansos avanzan automáticamente
 - ✅ **Árbol visual del torneo**: Muestra todas las rondas
 - ✅ **Historial de torneos**: Los torneos terminados se archivan con su campeón y subcampeón y se puede consultar su cuadro
@@ -111,7 +112,8 @@ padel_app/
 |   |   ├──📄 index.js
 |   |   ├──📄 liga.js
 |   |   ├──📄 torneo.js
-|   |   └──📄 individual.js
+|   |   ├──📄 individual.js
+|   |   └──📄 comentarios.js  # Comentarios en los partidos (compartido)
 |   ├──📁 css/
 |   |   ├──📄 base.css        # Diseño común: barra de navegación, tarjetas, botones, iconos
 |   |   ├──📄 comun.css       # Avisos, ventanas, ficha de pareja
@@ -135,7 +137,8 @@ padel_app/
 |   ├──📄 0005_ligas.sql
 |   ├──📄 0006_super_tiebreak.sql
 |   ├──📄 0007_nombres_ligas_sin_emoji.sql
-|   └──📄 0008_liga_individual.sql
+|   ├──📄 0008_liga_individual.sql
+|   └──📄 0009_comentarios.sql
 |
 ├──📁 docs/capturas/          # Capturas de pantalla del README (no se publican)
 ├──📁 tests/                  # Tests automáticos (node:test + SQLite en memoria)
@@ -159,6 +162,8 @@ El esquema se gestiona con las migraciones de la carpeta [`migrations/`](migrati
 | `individual_jugadores` | Jugadores de la liga individual y su orden inicial |
 | `individual_partidos` | Partidos de la liga individual (cuatro jugadores por partido) |
 | `individual_config` | Opciones de la liga individual (súper tie-break) |
+| `comentarios` | Comentarios de los partidos (de la liga, la liga individual y el torneo) |
+| `ajustes` | Ajustes generales, como el código de jugadores para comentar |
 | `torneo_equipos` | Equipos inscritos en el torneo |
 | `torneo_partidos` | Partidos del torneo por rondas (`equipo1_id`, `equipo2_id`, `ganador_id`) |
 | `login_intentos` | Intentos fallidos de login por IP |
@@ -178,6 +183,9 @@ Todas las rutas devuelven JSON con la forma `{ success, data?, error? }`.
 | `/api/torneo` | `getTorneo` (con `&id=` para un torneo del historial), `getHistorial` | GET | ❌ |
 | `/api/individual` | `getEstado` (jugadores, clasificación y jornadas) | GET | ❌ |
 | `/api/individual` | `addJugador`, `renameJugador`, `deleteJugador`, `ordenarJugadores`, `generarJornada`, `deshacerJornada`, `guardarResultado`, `anularResultado`, `resetIndividual`, `configurar` | POST | ✅ |
+| `/api/comentarios` | `getConteo` (número y último comentario de cada partido), `getComentarios` | GET | ❌ |
+| `/api/comentarios` | `comentar` (con el código de jugadores, o como administrador) | POST | — |
+| `/api/comentarios` | `getCodigo`, `configurarCodigo`, `borrarComentario` | POST | ✅ |
 | `/api/torneo` | `addEquipo`, `renameEquipo`, `deleteEquipo`, `crearTorneo`, `guardarPartido`, `anularPartido`, `archivarTorneo`, `configurarTorneo`, `resetTorneo` | POST | ✅ |
 
 La acción se indica con `?action=...`. Las acciones de administrador requieren la cabecera `Authorization: Bearer <token>` obtenida en `/api/login`. `guardarResultado` y `guardarPartido` sirven tanto para registrar un resultado como para corregirlo. `getEquipos` devuelve los equipos ya ordenados por clasificación. `resetTorneo` borra solo el torneo actual; el historial se conserva.

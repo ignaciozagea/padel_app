@@ -27,7 +27,14 @@
             document.getElementById('resetIndividualBtn').addEventListener('click', resetear);
             document.getElementById('superTiebreakIndividual').addEventListener('change', cambiarSuperTiebreak);
         }
+        iniciarComentarios('individual', tituloPartido);
         cargar();
+    }
+
+    // Título de la ventana de comentarios de un partido
+    function tituloPartido(id) {
+        const p = estado?.partidos.find(x => x.id === id);
+        return p ? `${p.local1}/${p.local2} vs ${p.visitante1}/${p.visitante2} · Jornada ${p.jornada}` : 'Comentarios';
     }
 
     async function cargar() {
@@ -342,6 +349,7 @@
                 </div>`;
         }
         container.innerHTML = html;
+        pintarZonasComentarios();
     }
 
     function nombrePareja(id1, nombre1, id2, nombre2) {
@@ -407,6 +415,7 @@
                 ${grupo}
                 ${marcador}
                 <div class="partido-pie">${pie}</div>
+                ${zonaComentarios(p.id)}
             </div>`;
     }
 

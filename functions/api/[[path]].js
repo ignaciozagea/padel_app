@@ -29,7 +29,9 @@ const ACCIONES_ADMIN = {
     torneo: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'crearTorneo',
              'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo', 'configurarTorneo'],
     individual: ['addJugador', 'renameJugador', 'deleteJugador', 'ordenarJugadores', 'generarJornada',
-                 'deshacerJornada', 'guardarResultado', 'anularResultado', 'resetIndividual', 'configurar']
+                 'deshacerJornada', 'guardarResultado', 'anularResultado', 'resetIndividual', 'configurar'],
+    // "comentar" no está aquí: lo puede usar cualquiera con el código de jugadores
+    comentarios: ['borrarComentario', 'configurarCodigo', 'getCodigo']
 };
 
 class HttpError extends Error {
@@ -88,6 +90,7 @@ export async function onRequest(context) {
 
         if (recurso === 'liga') return await handleLiga(request, env.DB, url, action);
         if (recurso === 'individual') return await handleIndividual(request, env.DB, action);
+        if (recurso === 'comentarios') return await handleComentarios(request, env, url, action);
         return await handleTorneo(request, env.DB, url, action);
     } catch (error) {
         if (error instanceof HttpError) {
@@ -132,32 +135,23 @@ function minutos(ms) {
     return `${n} minuto${n === 1 ? '' : 's'}`;
 }
 
-async function handleLogin(request, env) {
-    exigirPost(request);
-    if (!env.ADMIN_PASSWORD) {
-        throw new HttpError(500, 'El servidor no tiene configurada la contraseña de administrador');
-    }
-
-    const db = env.DB;
-    const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
+// ---------- Límite de intentos fallidos ----------
+// Se usa para la contraseña de administrador (clave = IP) y para el código de los comentarios
+// (clave = "comentarios:IP"): 5 fallos en 15 minutos bloquean esa clave durante 15 minutos.
+async function comprobarBloqueo(db, clave) {
+    const registro = await db.prepare('SELECT * FROM login_intentos WHERE ip = ?').bind(clave).first();
     const ahora = Date.now();
-
-    const registro = await db.prepare('SELECT * FROM login_intentos WHERE ip = ?').bind(ip).first();
     if (registro && registro.bloqueado_hasta > ahora) {
         const espera = registro.bloqueado_hasta - ahora;
         throw new HttpError(429, `Demasiados intentos fallidos. Prueba de nuevo en ${minutos(espera)}.`,
             { 'Retry-After': String(Math.ceil(espera / 1000)) });
     }
+    return registro;
+}
 
-    const data = await leerJson(request);
-    if (compararSeguro(String(data.password ?? ''), env.ADMIN_PASSWORD)) {
-        if (registro) await db.prepare('DELETE FROM login_intentos WHERE ip = ?').bind(ip).run();
-        const exp = String(ahora + TOKEN_TTL_MS);
-        const token = `${exp}.${await hmacHex(env.ADMIN_PASSWORD, exp)}`;
-        return json({ success: true, token });
-    }
-
-    // Contraseña incorrecta: contar el fallo dentro de la ventana de tiempo
+// Cuenta un fallo. Si llega al máximo, lanza el error de bloqueo; si no, devuelve los intentos restantes.
+async function registrarFallo(db, clave, registro) {
+    const ahora = Date.now();
     const nuevaVentana = !registro || ahora - registro.ventana_inicio > LOGIN_VENTANA_MS;
     const fallos = nuevaVentana ? 1 : registro.fallos + 1;
     const ventanaInicio = nuevaVentana ? ahora : registro.ventana_inicio;
@@ -170,18 +164,41 @@ async function handleLogin(request, env) {
                 fallos = excluded.fallos,
                 ventana_inicio = excluded.ventana_inicio,
                 bloqueado_hasta = excluded.bloqueado_hasta
-        `).bind(ip, fallos, ventanaInicio, bloqueadoHasta),
+        `).bind(clave, fallos, ventanaInicio, bloqueadoHasta),
         // Limpieza de registros antiguos
         db.prepare('DELETE FROM login_intentos WHERE ventana_inicio < ? AND bloqueado_hasta < ?')
             .bind(ahora - 24 * 60 * 60 * 1000, ahora)
     ]);
 
     if (bloqueadoHasta) {
-        throw new HttpError(429, `Demasiados intentos fallidos. Acceso bloqueado durante ${minutos(LOGIN_BLOQUEO_MS)}.`,
+        throw new HttpError(429, `Demasiados intentos fallidos. Bloqueado durante ${minutos(LOGIN_BLOQUEO_MS)}.`,
             { 'Retry-After': String(LOGIN_BLOQUEO_MS / 1000) });
     }
-    const restantes = LOGIN_MAX_FALLOS - fallos;
-    throw new HttpError(401, `Contraseña incorrecta (${restantes} intento${restantes === 1 ? '' : 's'} restante${restantes === 1 ? '' : 's'})`);
+    return LOGIN_MAX_FALLOS - fallos;
+}
+
+const textoRestantes = n => `${n} intento${n === 1 ? '' : 's'} restante${n === 1 ? '' : 's'}`;
+
+async function handleLogin(request, env) {
+    exigirPost(request);
+    if (!env.ADMIN_PASSWORD) {
+        throw new HttpError(500, 'El servidor no tiene configurada la contraseña de administrador');
+    }
+
+    const db = env.DB;
+    const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
+    const registro = await comprobarBloqueo(db, ip);
+
+    const data = await leerJson(request);
+    if (compararSeguro(String(data.password ?? ''), env.ADMIN_PASSWORD)) {
+        if (registro) await db.prepare('DELETE FROM login_intentos WHERE ip = ?').bind(ip).run();
+        const exp = String(Date.now() + TOKEN_TTL_MS);
+        const token = `${exp}.${await hmacHex(env.ADMIN_PASSWORD, exp)}`;
+        return json({ success: true, token });
+    }
+
+    const restantes = await registrarFallo(db, ip, registro);
+    throw new HttpError(401, `Contraseña incorrecta (${textoRestantes(restantes)})`);
 }
 
 // =====================================================
@@ -476,7 +493,8 @@ async function handleLiga(request, db, url, action) {
             await db.batch([
                 db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(slug),
                 db.prepare('DELETE FROM liga_equipos WHERE liga_nombre = ?').bind(slug),
-                db.prepare('DELETE FROM ligas WHERE slug = ?').bind(slug)
+                db.prepare('DELETE FROM ligas WHERE slug = ?').bind(slug),
+                limpiarComentarios(db, 'liga')
             ]);
             return json({ success: true });
         }
@@ -565,6 +583,7 @@ async function handleLiga(request, db, url, action) {
                 jornada.forEach(([local, visitante]) => batch.push(insert.bind(liga, idx + 1, local, visitante)));
             });
 
+            batch.push(limpiarComentarios(db, 'liga'));   // los partidos del calendario anterior ya no existen
             await db.batch(batch);
             return json({ success: true });
         }
@@ -628,8 +647,156 @@ async function handleLiga(request, db, url, action) {
         case 'resetLiga': {
             const data = await leerJson(request);
             const liga = await validarLiga(db, data.liga);
-            await db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(liga).run();
+            await db.batch([db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(liga), limpiarComentarios(db, 'liga')]);
             return json({ success: true });
+        }
+
+        default:
+            throw new HttpError(400, 'Acción no válida');
+    }
+}
+
+// =====================================================
+// COMENTARIOS EN LOS PARTIDOS
+// =====================================================
+// Cualquiera puede leerlos. Para escribir hace falta el código de jugadores (lo fija el administrador
+// y se comparte en el grupo) o ser administrador. Solo el administrador puede borrarlos.
+const MAX_AUTOR = 40;
+const MAX_TEXTO = 500;
+const MAX_COMENTARIOS_SEGUIDOS = 10;            // por persona…
+const VENTANA_COMENTARIOS_MS = 10 * 60 * 1000;  // …cada 10 minutos
+const TABLA_PARTIDOS = { liga: 'liga_calendario', individual: 'individual_partidos', torneo: 'torneo_partidos' };
+
+function validarTipo(tipo) {
+    if (!Object.hasOwn(TABLA_PARTIDOS, tipo)) throw new HttpError(400, 'Tipo de partido no válido');
+    return tipo;
+}
+
+async function codigoComentarios(db) {
+    const fila = await db.prepare("SELECT valor FROM ajustes WHERE clave = 'codigo_comentarios'").first();
+    return fila?.valor || '';
+}
+
+// Borra los comentarios de partidos que ya no existen (tras regenerar el calendario, resetear...)
+function limpiarComentarios(db, tipo) {
+    return db.prepare(`DELETE FROM comentarios WHERE tipo = ? AND partido_id NOT IN (SELECT id FROM ${TABLA_PARTIDOS[tipo]})`)
+        .bind(tipo);
+}
+
+function validarTexto(valor, campo, maximo) {
+    const limpio = String(valor ?? '').trim().replace(/\n{3,}/g, '\n\n');
+    if (!limpio) throw new HttpError(400, `${campo} no puede estar vacío`);
+    if (limpio.length > maximo) throw new HttpError(400, `${campo} no puede superar ${maximo} caracteres`);
+    return limpio;
+}
+
+async function handleComentarios(request, env, url, action) {
+    const db = env.DB;
+    switch (action) {
+        case 'getConteo': {
+            // Número de comentarios y el último de cada partido de un tipo (para mostrarlo en cada partido)
+            const tipo = validarTipo(url.searchParams.get('tipo'));
+            const [filas, codigo] = await Promise.all([
+                db.prepare(`
+                    SELECT c.partido_id, COUNT(*) AS total,
+                           (SELECT u.autor FROM comentarios u WHERE u.tipo = c.tipo AND u.partido_id = c.partido_id ORDER BY u.id DESC LIMIT 1) AS ultimo_autor,
+                           (SELECT u.texto FROM comentarios u WHERE u.tipo = c.tipo AND u.partido_id = c.partido_id ORDER BY u.id DESC LIMIT 1) AS ultimo_texto
+                    FROM comentarios c
+                    WHERE c.tipo = ?
+                    GROUP BY c.partido_id
+                `).bind(tipo).all(),
+                codigoComentarios(db)
+            ]);
+            const partidos = {};
+            for (const f of filas.results) {
+                partidos[f.partido_id] = { total: f.total, ultimo_autor: f.ultimo_autor, ultimo_texto: f.ultimo_texto };
+            }
+            return json({ success: true, data: { activos: !!codigo, partidos } });
+        }
+
+        case 'getComentarios': {
+            const tipo = validarTipo(url.searchParams.get('tipo'));
+            const partido = Number(url.searchParams.get('partido'));
+            const [lista, codigo] = await Promise.all([
+                db.prepare('SELECT id, autor, texto, creado_en FROM comentarios WHERE tipo = ? AND partido_id = ? ORDER BY id')
+                    .bind(tipo, partido).all(),
+                codigoComentarios(db)
+            ]);
+            return json({ success: true, data: { activos: !!codigo, comentarios: lista.results } });
+        }
+
+        case 'comentar': {
+            exigirPost(request);
+            const data = await leerJson(request);
+            const tipo = validarTipo(data.tipo);
+            const partidoId = Number(data.partido_id);
+            const existe = await db.prepare(`SELECT 1 FROM ${TABLA_PARTIDOS[tipo]} WHERE id = ?`).bind(partidoId).first();
+            if (!existe) throw new HttpError(404, 'Partido no encontrado');
+            const autor = validarTexto(data.autor, 'El nombre', MAX_AUTOR);
+            const texto = validarTexto(data.texto, 'El comentario', MAX_TEXTO);
+
+            const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
+            const esAdminPeticion = await tokenValido(request, env.ADMIN_PASSWORD);
+            // Huella anónima del remitente (no se guarda la IP) para limitar envíos seguidos
+            const origen = (await hmacHex(env.ADMIN_PASSWORD || 'padel-go', `comentarios:${ip}`)).slice(0, 16);
+
+            if (!esAdminPeticion) {
+                const codigo = await codigoComentarios(db);
+                if (!codigo) throw new HttpError(403, 'Los comentarios no están activados');
+
+                const clave = `comentarios:${ip}`;
+                const registro = await comprobarBloqueo(db, clave);
+                const recibido = String(data.codigo ?? '').trim().toLowerCase();
+                if (!compararSeguro(recibido, codigo.toLowerCase())) {
+                    const restantes = await registrarFallo(db, clave, registro);
+                    throw new HttpError(403, `Código de jugadores incorrecto (${textoRestantes(restantes)})`);
+                }
+                if (registro) await db.prepare('DELETE FROM login_intentos WHERE ip = ?').bind(clave).run();
+
+                const recientes = await db.prepare('SELECT COUNT(*) AS n FROM comentarios WHERE origen = ? AND creado_en > ?')
+                    .bind(origen, Date.now() - VENTANA_COMENTARIOS_MS).first();
+                if (recientes.n >= MAX_COMENTARIOS_SEGUIDOS) {
+                    throw new HttpError(429, 'Has enviado muchos comentarios seguidos. Espera unos minutos.');
+                }
+            }
+
+            const creadoEn = Date.now();
+            const nuevo = await db.prepare(`
+                INSERT INTO comentarios (tipo, partido_id, autor, texto, origen, creado_en)
+                VALUES (?, ?, ?, ?, ?, ?) RETURNING id
+            `).bind(tipo, partidoId, autor, texto, origen, creadoEn).first();
+            return json({ success: true, comentario: { id: nuevo.id, autor, texto, creado_en: creadoEn } });
+        }
+
+        case 'borrarComentario': {
+            const data = await leerJson(request);
+            const comentario = await db.prepare('SELECT id FROM comentarios WHERE id = ?').bind(data.id).first();
+            if (!comentario) throw new HttpError(404, 'Comentario no encontrado');
+            await db.prepare('DELETE FROM comentarios WHERE id = ?').bind(comentario.id).run();
+            return json({ success: true });
+        }
+
+        case 'getCodigo': {
+            // Solo el administrador puede ver el código (para compartirlo)
+            return json({ success: true, codigo: await codigoComentarios(db) });
+        }
+
+        case 'configurarCodigo': {
+            // Código vacío = comentarios desactivados
+            const data = await leerJson(request);
+            const codigo = String(data.codigo ?? '').trim();
+            if (codigo && (codigo.length < 4 || codigo.length > 40)) {
+                throw new HttpError(400, 'El código tiene que tener entre 4 y 40 caracteres');
+            }
+            if (codigo) {
+                await db.prepare(`
+                    INSERT INTO ajustes (clave, valor) VALUES ('codigo_comentarios', ?)
+                    ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor
+                `).bind(codigo).run();
+            } else {
+                await db.prepare("DELETE FROM ajustes WHERE clave = 'codigo_comentarios'").run();
+            }
+            return json({ success: true, activos: !!codigo });
         }
 
         default:
@@ -850,7 +1017,10 @@ async function handleIndividual(request, db, action) {
             if (conResultado) {
                 throw new HttpError(409, `La jornada ${estado.jornadaActual} ya tiene resultados: anúlalos antes de deshacerla`);
             }
-            await db.prepare('DELETE FROM individual_partidos WHERE jornada = ?').bind(estado.jornadaActual).run();
+            await db.batch([
+                db.prepare('DELETE FROM individual_partidos WHERE jornada = ?').bind(estado.jornadaActual),
+                limpiarComentarios(db, 'individual')
+            ]);
             return json({ success: true, jornada: estado.jornadaActual });
         }
 
@@ -896,7 +1066,7 @@ async function handleIndividual(request, db, action) {
 
         case 'resetIndividual': {
             // Borra todas las jornadas; los jugadores y su orden se conservan
-            await db.prepare('DELETE FROM individual_partidos').run();
+            await db.batch([db.prepare('DELETE FROM individual_partidos'), limpiarComentarios(db, 'individual')]);
             return json({ success: true });
         }
 
@@ -1171,6 +1341,7 @@ async function handleTorneo(request, db, url, action) {
                 }
             }
 
+            batch.push(limpiarComentarios(db, 'torneo'));   // los partidos del sorteo anterior ya no existen
             await db.batch(batch);
             return json({ success: true, torneoId: torneo.id });
         }
@@ -1235,6 +1406,7 @@ async function handleTorneo(request, db, url, action) {
             // Borra solo el torneo actual; el historial (torneos archivados) se conserva
             const torneo = await obtenerTorneoActual(db);
             if (torneo) await borrarTorneo(db, torneo.id);
+            await limpiarComentarios(db, 'torneo').run();
             return json({ success: true });
         }
 

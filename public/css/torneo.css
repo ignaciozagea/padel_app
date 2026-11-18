@@ -373,3 +373,9 @@
     .match-fila .juego { min-width: 1.2rem; padding: 0.05rem 0.15rem; font-size: 0.75rem; }
     .set-card { min-width: 100%; }
 }
+
+/* Botón de comentarios en el pie de cada partido del cuadro */
+.match-pie .zona-comentarios { margin-left: 0.3rem; }
+.match-pie .btn-play + .zona-comentarios,
+.match-pie .btn-edit-match + .zona-comentarios { margin-left: 0.3rem; }
+.match-pie .estado + .zona-comentarios { margin-left: auto; }

@@ -302,3 +302,122 @@ body.ui-ocupado { cursor: progress; }
 .racha-v  { background: rgba(16, 185, 129, 0.2);  color: #34d399; }
 .racha-d1 { background: rgba(245, 158, 11, 0.2);  color: #fbbf24; }
 .racha-d0 { background: rgba(239, 68, 68, 0.2);   color: #f87171; }
+
+/* ---------- Comentarios en los partidos (js/comentarios.js) ---------- */
+.zona-comentarios:empty { display: none; }
+
+/* Zona dentro de cada partido: número y último comentario */
+.btn-zona-comentarios {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(148, 163, 184, 0.25);
+    border-radius: 10px;
+    color: var(--texto-suave, #94a3b8);
+    font: inherit;
+    font-size: 0.78rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.btn-zona-comentarios:hover { background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.35); }
+.btn-zona-comentarios .ico { color: #38bdf8; }
+
+.btn-zona-comentarios .total {
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.18);
+    color: #e0f2fe;
+    font-weight: 700;
+    font-size: 0.72rem;
+}
+
+.btn-zona-comentarios .ultimo {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-zona-comentarios .ultimo strong { color: #e2e8f0; font-weight: 600; }
+.btn-zona-comentarios .ultimo.vacio { font-style: italic; }
+
+/* Versión compacta (cuadro del torneo) */
+.btn-comentarios {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem 0.4rem;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    color: var(--texto-suave, #94a3b8);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-comentarios:hover { color: #e0f2fe; border-color: rgba(56, 189, 248, 0.4); }
+
+/* Ventana con la conversación */
+.comentarios-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 45vh;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.comentario {
+    padding: 0.6rem 0.8rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+}
+
+.comentario-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+}
+
+.comentario-cabecera .fecha { font-size: 0.75rem; color: #94a3b8; }
+.comentario-cabecera .btn-ico { margin-left: auto; width: 1.5rem; height: 1.5rem; }
+
+.comentario-texto {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.form-comentario {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.form-comentario-fila { display: flex; gap: 0.5rem; }
+.form-comentario-fila .ui-input { min-width: 0; }
+.form-comentario textarea { resize: vertical; min-height: 4.5rem; font: inherit; }
+
+.form-comentario-pie {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.form-comentario-pie .contador { font-size: 0.75rem; color: #94a3b8; }
+
+@media (max-width: 480px) {
+    .form-comentario-fila { flex-direction: column; }
+}

@@ -69,6 +69,19 @@
                 <button class="btn btn-admin" id="adminLogoutBtn">
                     <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#salir"></use></svg> Cerrar sesión
                 </button>
+
+                <!-- Código que necesitan los jugadores para comentar en los partidos -->
+                <div class="codigo-comentarios">
+                    <label for="codigoComentarios">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#mensaje"></use></svg>
+                        Código de jugadores para comentar los partidos
+                    </label>
+                    <div class="codigo-fila">
+                        <input type="text" id="codigoComentarios" maxlength="40" autocomplete="off" placeholder="Vacío = comentarios desactivados">
+                        <button class="btn btn-secondary btn-sm" id="guardarCodigoBtn">Guardar</button>
+                    </div>
+                    <small id="codigoEstado"></small>
+                </div>
             </div>
         </div>
 
