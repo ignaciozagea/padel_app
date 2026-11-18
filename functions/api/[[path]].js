@@ -27,7 +27,9 @@ const ACCIONES_ADMIN = {
            'addEquipo', 'renameEquipo', 'deleteEquipo', 'generarCalendario',
            'guardarResultado', 'anularResultado', 'resetLiga', 'configurarLiga'],
     torneo: ['addEquipo', 'renameEquipo', 'deleteEquipo', 'crearTorneo',
-             'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo', 'configurarTorneo']
+             'guardarPartido', 'anularPartido', 'resetTorneo', 'archivarTorneo', 'configurarTorneo'],
+    individual: ['addJugador', 'renameJugador', 'deleteJugador', 'ordenarJugadores', 'generarJornada',
+                 'deshacerJornada', 'guardarResultado', 'anularResultado', 'resetIndividual', 'configurar']
 };
 
 class HttpError extends Error {
@@ -72,7 +74,7 @@ export async function onRequest(context) {
         }
 
         const recurso = path.split('/')[0];
-        if (recurso !== 'liga' && recurso !== 'torneo') {
+        if (!ACCIONES_ADMIN[recurso]) {
             throw new HttpError(404, 'Ruta no encontrada');
         }
 
@@ -85,6 +87,7 @@ export async function onRequest(context) {
         }
 
         if (recurso === 'liga') return await handleLiga(request, env.DB, url, action);
+        if (recurso === 'individual') return await handleIndividual(request, env.DB, action);
         return await handleTorneo(request, env.DB, url, action);
     } catch (error) {
         if (error instanceof HttpError) {
@@ -318,6 +321,33 @@ async function comprobarNombreLibreLiga(db, liga, nombre, exceptoId = 0) {
 //   4. Diferencia de juegos
 //   5. Sets a favor
 //   6. Nombre (orden alfabético)
+// Sets y juegos ganados por cada lado de un partido jugado.
+// El súper tie-break cuenta como un set y como un juego (1-0), no por sus puntos.
+function contarSetsYJuegos(p) {
+    let sl = 0, sv = 0, jl = 0, jv = 0;
+    for (let n = 1; n <= 3; n++) {
+        const a = p[`set${n}_local`];
+        const b = p[`set${n}_visitante`];
+        if (a === null || a === undefined || b === null || b === undefined) continue;
+        if (n === 3 && esSuperTiebreak(a, b)) {
+            if (a > b) jl++; else jv++;
+        } else {
+            jl += a; jv += b;
+        }
+        if (a > b) sl++; else sv++;
+    }
+    return { sl, sv, jl, jv };
+}
+
+// 3 puntos al ganador; el perdedor suma 1 si ganó un set (2-1) y 0 si perdió 2-0
+function puntosPartido(setsLocal, setsVisitante) {
+    const ganaLocal = setsLocal > setsVisitante;
+    return {
+        puntosLocal: ganaLocal ? 3 : (setsLocal > 0 ? 1 : 0),
+        puntosVisitante: ganaLocal ? (setsVisitante > 0 ? 1 : 0) : 3
+    };
+}
+
 function calcularClasificacion(equipos, partidos) {
     const stats = new Map(equipos.map(e => [e.id, {
         id: e.id, nombre: e.nombre,
@@ -340,19 +370,7 @@ function calcularClasificacion(equipos, partidos) {
         const visitante = stats.get(p.visitante_id);
         if (!local || !visitante) continue;
 
-        let sl = 0, sv = 0, jl = 0, jv = 0;
-        for (let n = 1; n <= 3; n++) {
-            const a = p[`set${n}_local`];
-            const b = p[`set${n}_visitante`];
-            if (a === null || a === undefined || b === null || b === undefined) continue;
-            if (n === 3 && esSuperTiebreak(a, b)) {
-                // El súper tie-break cuenta como un juego (1-0), no por sus puntos
-                if (a > b) jl++; else jv++;
-            } else {
-                jl += a; jv += b;
-            }
-            if (a > b) sl++; else sv++;
-        }
+        const { sl, sv, jl, jv } = contarSetsYJuegos(p);
         sumar(local, p.puntos_local, sl, sv, jl, jv);
         sumar(visitante, p.puntos_visitante, sv, sl, jv, jl);
         ganadorDirecto.set(clave(p.local_id, p.visitante_id), sl > sv ? p.local_id : p.visitante_id);
@@ -611,6 +629,282 @@ async function handleLiga(request, db, url, action) {
             const data = await leerJson(request);
             const liga = await validarLiga(db, data.liga);
             await db.prepare('DELETE FROM liga_calendario WHERE liga_nombre = ?').bind(liga).run();
+            return json({ success: true });
+        }
+
+        default:
+            throw new HttpError(400, 'Acción no válida');
+    }
+}
+
+// =====================================================
+// LIGA INDIVIDUAL
+// =====================================================
+// Cada jugador puntúa por su cuenta. En cada jornada se ordena a los jugadores (jornada 1: orden que fija
+// el administrador; después: clasificación) y se hacen grupos de 4: el 1º y el 3º juegan contra el 2º y el 4º.
+const JORNADAS_INDIVIDUAL = 10;
+
+async function estadoIndividual(db) {
+    const [jugadores, partidos, config] = await Promise.all([
+        db.prepare('SELECT id, nombre, orden FROM individual_jugadores ORDER BY orden, id').all(),
+        db.prepare(`
+            SELECT p.*,
+                   l1.nombre AS local1, l2.nombre AS local2,
+                   v1.nombre AS visitante1, v2.nombre AS visitante2
+            FROM individual_partidos p
+            JOIN individual_jugadores l1 ON l1.id = p.local1_id
+            JOIN individual_jugadores l2 ON l2.id = p.local2_id
+            JOIN individual_jugadores v1 ON v1.id = p.visitante1_id
+            JOIN individual_jugadores v2 ON v2.id = p.visitante2_id
+            ORDER BY p.jornada, p.orden
+        `).all(),
+        db.prepare('SELECT super_tiebreak FROM individual_config WHERE id = 1').first()
+    ]);
+    const lista = partidos.results;
+    const jornadaActual = lista.reduce((max, p) => Math.max(max, p.jornada), 0);
+    const delaActual = lista.filter(p => p.jornada === jornadaActual);
+    return {
+        jugadores: jugadores.results,
+        partidos: lista,
+        jornadaActual,
+        actualCompleta: jornadaActual > 0 && delaActual.every(p => p.completado),
+        superTiebreak: !!config?.super_tiebreak
+    };
+}
+
+// Clasificación por jugador: cada uno suma los puntos, sets y juegos de su pareja en cada partido.
+// Orden: puntos, diferencia de sets, diferencia de juegos, sets a favor y, por último, el orden inicial.
+function clasificacionIndividual(jugadores, partidos) {
+    const stats = new Map(jugadores.map(j => [j.id, {
+        id: j.id, nombre: j.nombre, orden: j.orden,
+        pj: 0, pg: 0, pp1: 0, pp0: 0, puntos: 0,
+        sets_favor: 0, sets_contra: 0, juegos_favor: 0, juegos_contra: 0
+    }]));
+
+    const sumar = (id, pts, sf, sc, jf, jc) => {
+        const s = stats.get(id);
+        if (!s) return;
+        s.pj++;
+        s.puntos += pts;
+        if (pts === 3) s.pg++; else if (pts === 1) s.pp1++; else s.pp0++;
+        s.sets_favor += sf; s.sets_contra += sc;
+        s.juegos_favor += jf; s.juegos_contra += jc;
+    };
+
+    for (const p of partidos) {
+        if (!p.completado) continue;
+        const { sl, sv, jl, jv } = contarSetsYJuegos(p);
+        for (const id of [p.local1_id, p.local2_id]) sumar(id, p.puntos_local, sl, sv, jl, jv);
+        for (const id of [p.visitante1_id, p.visitante2_id]) sumar(id, p.puntos_visitante, sv, sl, jv, jl);
+    }
+
+    return [...stats.values()]
+        .sort((a, b) => (b.puntos - a.puntos)
+            || ((b.sets_favor - b.sets_contra) - (a.sets_favor - a.sets_contra))
+            || ((b.juegos_favor - b.juegos_contra) - (a.juegos_favor - a.juegos_contra))
+            || (b.sets_favor - a.sets_favor)
+            || (a.orden - b.orden)
+            || a.nombre.localeCompare(b.nombre, 'es'))
+        .map((s, i) => ({ ...s, posicion: i + 1 }));
+}
+
+async function obtenerJugador(db, id) {
+    const jugador = await db.prepare('SELECT * FROM individual_jugadores WHERE id = ?').bind(id).first();
+    if (!jugador) throw new HttpError(404, 'Jugador no encontrado');
+    return jugador;
+}
+
+async function comprobarNombreLibreJugador(db, nombre, exceptoId = 0) {
+    const existe = await db.prepare(
+        'SELECT 1 FROM individual_jugadores WHERE LOWER(nombre) = LOWER(?) AND id <> ?'
+    ).bind(nombre, exceptoId).first();
+    if (existe) throw new HttpError(409, 'Ya hay un jugador con ese nombre');
+}
+
+function exigirNoEmpezada(estado) {
+    if (estado.jornadaActual > 0) {
+        throw new HttpError(409, 'La liga ya ha empezado: no se pueden cambiar los jugadores ni su orden. Resetéala para hacerlo.');
+    }
+}
+
+// Partido de la última jornada (las anteriores ya no se pueden tocar: de ellas salen las parejas siguientes)
+async function partidoEditable(db, id) {
+    const estado = await estadoIndividual(db);
+    const partido = estado.partidos.find(p => p.id === Number(id));
+    if (!partido) throw new HttpError(404, 'Partido no encontrado');
+    if (partido.jornada !== estado.jornadaActual) {
+        throw new HttpError(409, 'Solo se pueden modificar los resultados de la última jornada (las parejas de las siguientes dependen de ellos)');
+    }
+    return { estado, partido };
+}
+
+async function handleIndividual(request, db, action) {
+    switch (action) {
+        case 'getEstado': {
+            const estado = await estadoIndividual(db);
+            const n = estado.jugadores.length;
+            const puedeGenerar = estado.jornadaActual === 0
+                ? n >= 4 && n % 4 === 0
+                : estado.actualCompleta && estado.jornadaActual < JORNADAS_INDIVIDUAL;
+            return json({
+                success: true,
+                data: {
+                    jugadores: estado.jugadores,
+                    clasificacion: clasificacionIndividual(estado.jugadores, estado.partidos),
+                    partidos: estado.partidos,
+                    jornadaActual: estado.jornadaActual,
+                    totalJornadas: JORNADAS_INDIVIDUAL,
+                    superTiebreak: estado.superTiebreak,
+                    empezada: estado.jornadaActual > 0,
+                    terminada: estado.jornadaActual === JORNADAS_INDIVIDUAL && estado.actualCompleta,
+                    puedeGenerar
+                }
+            });
+        }
+
+        case 'addJugador': {
+            const data = await leerJson(request);
+            const nombre = validarNombre(data.nombre);
+            exigirNoEmpezada(await estadoIndividual(db));
+            await comprobarNombreLibreJugador(db, nombre);
+            await db.prepare(`
+                INSERT INTO individual_jugadores (nombre, orden)
+                VALUES (?, (SELECT COALESCE(MAX(orden), -1) + 1 FROM individual_jugadores))
+            `).bind(nombre).run();
+            return json({ success: true });
+        }
+
+        case 'renameJugador': {
+            const data = await leerJson(request);
+            const jugador = await obtenerJugador(db, data.id);
+            const nombre = validarNombre(data.nombre);
+            await comprobarNombreLibreJugador(db, nombre, jugador.id);
+            await db.prepare('UPDATE individual_jugadores SET nombre = ? WHERE id = ?').bind(nombre, jugador.id).run();
+            return json({ success: true });
+        }
+
+        case 'deleteJugador': {
+            const data = await leerJson(request);
+            const jugador = await obtenerJugador(db, data.id);
+            exigirNoEmpezada(await estadoIndividual(db));
+            await db.prepare('DELETE FROM individual_jugadores WHERE id = ?').bind(jugador.id).run();
+            return json({ success: true });
+        }
+
+        case 'ordenarJugadores': {
+            // Orden inicial (el de la jornada 1): lista completa de ids en el orden deseado
+            const data = await leerJson(request);
+            const estado = await estadoIndividual(db);
+            exigirNoEmpezada(estado);
+            const ids = Array.isArray(data.ids) ? data.ids.map(Number) : [];
+            const actuales = estado.jugadores.map(j => j.id);
+            const mismos = ids.length === actuales.length && new Set(ids).size === ids.length
+                && ids.every(id => actuales.includes(id));
+            if (!mismos) throw new HttpError(400, 'La lista de jugadores no coincide con los inscritos');
+
+            const actualizar = db.prepare('UPDATE individual_jugadores SET orden = ? WHERE id = ?');
+            await db.batch(ids.map((id, i) => actualizar.bind(i, id)));
+            return json({ success: true });
+        }
+
+        case 'generarJornada': {
+            const estado = await estadoIndividual(db);
+            const n = estado.jugadores.length;
+            let ranking;
+
+            if (estado.jornadaActual === 0) {
+                if (n < 4 || n % 4 !== 0) {
+                    throw new HttpError(409, `Para empezar hacen falta 4, 8, 12, 16… jugadores (múltiplo de 4). Ahora hay ${n}.`);
+                }
+                ranking = estado.jugadores;  // orden manual
+            } else {
+                if (estado.jornadaActual >= JORNADAS_INDIVIDUAL) {
+                    throw new HttpError(409, `La liga ya ha jugado sus ${JORNADAS_INDIVIDUAL} jornadas`);
+                }
+                if (!estado.actualCompleta) {
+                    throw new HttpError(409, `Faltan resultados de la jornada ${estado.jornadaActual}`);
+                }
+                ranking = clasificacionIndividual(estado.jugadores, estado.partidos);
+            }
+
+            // Grupos de 4 por orden: 1º y 3º contra 2º y 4º
+            const jornada = estado.jornadaActual + 1;
+            const insertar = db.prepare(`
+                INSERT INTO individual_partidos (jornada, orden, local1_id, local2_id, visitante1_id, visitante2_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            const batch = [];
+            for (let g = 0; g < ranking.length / 4; g++) {
+                const [primero, segundo, tercero, cuarto] = ranking.slice(g * 4, g * 4 + 4);
+                batch.push(insertar.bind(jornada, g, primero.id, tercero.id, segundo.id, cuarto.id));
+            }
+            await db.batch(batch);
+            return json({ success: true, jornada });
+        }
+
+        case 'deshacerJornada': {
+            // Borra la última jornada si todavía no tiene resultados (p. ej. generada por error)
+            const estado = await estadoIndividual(db);
+            if (estado.jornadaActual === 0) throw new HttpError(409, 'No hay ninguna jornada que deshacer');
+            const conResultado = estado.partidos.some(p => p.jornada === estado.jornadaActual && p.completado);
+            if (conResultado) {
+                throw new HttpError(409, `La jornada ${estado.jornadaActual} ya tiene resultados: anúlalos antes de deshacerla`);
+            }
+            await db.prepare('DELETE FROM individual_partidos WHERE jornada = ?').bind(estado.jornadaActual).run();
+            return json({ success: true, jornada: estado.jornadaActual });
+        }
+
+        case 'guardarResultado': {
+            // Registra un resultado nuevo o corrige uno de la última jornada
+            const data = await leerJson(request);
+            const { estado, partido } = await partidoEditable(db, data.id);
+            const { sets, setsLocal, setsVisitante } = analizarSets(data, { superTiebreak: estado.superTiebreak });
+            const { puntosLocal, puntosVisitante } = puntosPartido(setsLocal, setsVisitante);
+
+            await db.prepare(`
+                UPDATE individual_partidos
+                SET completado = 1,
+                    set1_local = ?, set1_visitante = ?,
+                    set2_local = ?, set2_visitante = ?,
+                    set3_local = ?, set3_visitante = ?,
+                    puntos_local = ?, puntos_visitante = ?
+                WHERE id = ?
+            `).bind(
+                sets[0].local, sets[0].visitante,
+                sets[1].local, sets[1].visitante,
+                sets[2].local, sets[2].visitante,
+                puntosLocal, puntosVisitante,
+                partido.id
+            ).run();
+            return json({ success: true, setsLocal, setsVisitante });
+        }
+
+        case 'anularResultado': {
+            const data = await leerJson(request);
+            const { partido } = await partidoEditable(db, data.id);
+            await db.prepare(`
+                UPDATE individual_partidos
+                SET completado = 0,
+                    set1_local = NULL, set1_visitante = NULL,
+                    set2_local = NULL, set2_visitante = NULL,
+                    set3_local = NULL, set3_visitante = NULL,
+                    puntos_local = NULL, puntos_visitante = NULL
+                WHERE id = ?
+            `).bind(partido.id).run();
+            return json({ success: true });
+        }
+
+        case 'resetIndividual': {
+            // Borra todas las jornadas; los jugadores y su orden se conservan
+            await db.prepare('DELETE FROM individual_partidos').run();
+            return json({ success: true });
+        }
+
+        case 'configurar': {
+            const data = await leerJson(request);
+            if (typeof data.super_tiebreak !== 'boolean') throw new HttpError(400, 'Opción no válida');
+            await db.prepare('UPDATE individual_config SET super_tiebreak = ? WHERE id = 1')
+                .bind(data.super_tiebreak ? 1 : 0).run();
             return json({ success: true });
         }
 

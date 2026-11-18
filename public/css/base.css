@@ -381,3 +381,9 @@ body {
 .set-inputs input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .set-inputs input[type="number"]::-webkit-inner-spin-button,
 .set-inputs input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Con cuatro secciones, en móviles estrechos el menú muestra solo el texto */
+@media (max-width: 420px) {
+    .menu a { gap: 0; padding: 0.5rem 0.25rem; font-size: 0.82rem; }
+    .menu a .ico { display: none; }
+}

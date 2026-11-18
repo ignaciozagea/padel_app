@@ -46,7 +46,14 @@ function notificar(mensaje, tipo = 'ok') {
         setTimeout(() => aviso.remove(), 250);
     };
     aviso.addEventListener('click', quitar);
-    contenedorAvisos().appendChild(aviso);
+    const contenedor = contenedorAvisos();
+    contenedor.appendChild(aviso);
+    // Como mucho 3 avisos a la vez: si se encadenan acciones, los más antiguos se van
+    const visibles = [...contenedor.querySelectorAll('.ui-aviso:not(.ui-saliendo)')];
+    visibles.slice(0, Math.max(0, visibles.length - 3)).forEach(viejo => {
+        viejo.classList.add('ui-saliendo');
+        setTimeout(() => viejo.remove(), 250);
+    });
     setTimeout(quitar, tipo === 'error' ? 7000 : 4500);
 }
 

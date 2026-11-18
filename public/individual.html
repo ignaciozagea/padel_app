@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Liga individual · Pádel GO</title>
+    <meta name="description" content="Liga individual de pádel: parejas nuevas cada jornada según la clasificación">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/liga.css">
+    <link rel="stylesheet" href="css/individual.css">
+    <link rel="stylesheet" href="css/comun.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Pádel GO">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+    <header class="topbar">
+        <a class="marca" href="/" aria-label="Pádel GO, inicio">
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pelota"></use></svg>
+            <span>Pádel GO</span>
+        </a>
+        <nav class="menu" aria-label="Secciones">
+            <a href="/"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#inicio"></use></svg>Inicio</a>
+            <a href="/liga"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#trofeo"></use></svg>Liga</a>
+            <a href="/individual" aria-current="page"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pareja"></use></svg>Individual</a>
+            <a href="/torneo"><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#cuadro"></use></svg>Torneo</a>
+        </nav>
+        <div class="admin-badge" id="adminBadge" style="display: none;">
+            <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#corona"></use></svg>
+            <span class="admin-texto">Administrador</span>
+            <button class="btn btn-secondary btn-sm" onclick="cerrarSesion()">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#salir"></use></svg>Salir
+            </button>
+        </div>
+    </header>
+
+    <div class="page-head">
+        <h1><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#pareja"></use></svg>Liga individual</h1>
+        <p>Cada jornada cambian las parejas según la clasificación: en cada grupo de 4, el 1º y el 3º juegan contra el 2º y el 4º</p>
+    </div>
+
+    <!-- Panel de administración -->
+    <div id="adminPanel" style="display: none;">
+        <div class="admin-grid">
+            <div class="card">
+                <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#jugadores"></use></svg>Jugadores</h2>
+                <div class="form-group">
+                    <input type="text" id="playerName" placeholder="Nombre del jugador" maxlength="60">
+                    <button class="btn btn-primary" id="addPlayerBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#mas"></use></svg>Añadir
+                    </button>
+                </div>
+                <ol id="playersList" class="lista-orden"></ol>
+                <div class="info-text" id="playersInfo"></div>
+            </div>
+
+            <div class="card">
+                <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#ajustes"></use></svg>Jornadas</h2>
+                <p class="estado-liga" id="estadoLiga"></p>
+                <div class="form-group">
+                    <button class="btn btn-primary" id="generateRoundBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#calendario"></use></svg><span>Empezar liga</span>
+                    </button>
+                    <button class="btn btn-secondary" id="undoRoundBtn" style="display: none;">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#volver"></use></svg>Deshacer última jornada
+                    </button>
+                    <button class="btn btn-danger" id="resetIndividualBtn">
+                        <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#reiniciar"></use></svg>Resetear liga
+                    </button>
+                </div>
+                <div class="info-text" id="generateHint"></div>
+                <label class="ui-opcion">
+                    <input type="checkbox" id="superTiebreakIndividual">
+                    <span>Tercer set como <strong>súper tie-break</strong> (a 10 puntos, diferencia de 2)</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clasificación individual -->
+    <section class="card">
+        <div class="card-cabecera">
+            <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#medalla"></use></svg>Clasificación</h2>
+            <button class="btn btn-secondary btn-sm" id="shareStandingsBtn">
+                <svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#compartir"></use></svg>Compartir
+            </button>
+        </div>
+        <div id="standingsContainer"></div>
+    </section>
+
+    <!-- Jornadas -->
+    <section class="card">
+        <div class="card-cabecera">
+            <h2><svg class="ico" aria-hidden="true"><use href="/img/iconos.svg#calendario"></use></svg>Jornadas</h2>
+            <span class="progreso-liga" id="progresoLiga"></span>
+        </div>
+        <div id="matchesContainer"></div>
+    </section>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/individual.js"></script>
+
+</body>
+</html>
